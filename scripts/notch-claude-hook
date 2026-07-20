@@ -1,0 +1,33 @@
+#!/bin/sh
+
+status=${1:-}
+case $status in
+    starting|working|needs_me|done|remove) ;;
+    *) exit 0 ;;
+esac
+
+command -v jq >/dev/null 2>&1 || exit 0
+
+payload=$(cat 2>/dev/null)
+session_id=$(printf '%s' "$payload" | jq -r '.session_id // empty' 2>/dev/null)
+cwd=$(printf '%s' "$payload" | jq -r '.cwd // empty' 2>/dev/null)
+
+[ -n "$session_id" ] || exit 0
+
+script_dir=$(CDPATH= cd -P "$(dirname "$0")" 2>/dev/null && pwd)
+emitter=$script_dir/notch-emit
+[ -x "$emitter" ] || exit 0
+
+id=claude-$session_id
+if [ "$status" = remove ]; then
+    "$emitter" "$id" claude-code remove --remove >/dev/null 2>&1
+    exit 0
+fi
+
+project=
+if [ -n "$cwd" ]; then
+    project=$(basename "$cwd" 2>/dev/null)
+fi
+
+"$emitter" "$id" claude-code "$status" --cwd "$cwd" --project "$project" >/dev/null 2>&1
+exit 0

@@ -1,0 +1,14 @@
+.build/
+.swiftpm/
+DerivedData/
+*.xcodeproj
+*.xcworkspace
+.DS_Store
+# never commit secrets / signing
+*.p12
+*.cer
+*.certSigningRequest
+credentials*.json
+client_secret*.json
+.env
+build/

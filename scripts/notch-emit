@@ -1,0 +1,151 @@
+#!/bin/sh
+
+if [ "$#" -lt 3 ]; then
+    exit 0
+fi
+
+id=$1
+agent=$2
+status=$3
+shift 3
+
+detail=
+project=
+cwd=
+pid=
+remove=0
+
+while [ "$#" -gt 0 ]; do
+    case $1 in
+        --detail)
+            [ "$#" -ge 2 ] || exit 0
+            detail=$2
+            shift 2
+            ;;
+        --project)
+            [ "$#" -ge 2 ] || exit 0
+            project=$2
+            shift 2
+            ;;
+        --cwd)
+            [ "$#" -ge 2 ] || exit 0
+            cwd=$2
+            shift 2
+            ;;
+        --pid)
+            [ "$#" -ge 2 ] || exit 0
+            pid=$2
+            shift 2
+            ;;
+        --remove)
+            remove=1
+            shift
+            ;;
+        *)
+            shift
+            ;;
+    esac
+done
+
+case $id in
+    ""|*/*)
+        exit 0
+        ;;
+esac
+
+notch_home=${NOTCH_HUD_HOME:-"$HOME/.notch-hud"}
+spool_dir=$notch_home/sessions
+seq_dir=$notch_home/seq
+session_file=$spool_dir/$id.json
+seq_file=$seq_dir/$id
+
+mkdir -p "$spool_dir" "$seq_dir" >/dev/null 2>&1 || exit 0
+
+if [ "$remove" -eq 1 ]; then
+    rm -f "$session_file" "$seq_file" >/dev/null 2>&1
+    exit 0
+fi
+
+command -v jq >/dev/null 2>&1 || exit 0
+
+seq=0
+if [ -f "$seq_file" ]; then
+    seq=$(sed -n '1p' "$seq_file" 2>/dev/null)
+fi
+case $seq in
+    ""|*[!0-9]*) seq=0 ;;
+esac
+seq=$((seq + 1))
+printf '%s\n' "$seq" > "$seq_file" 2>/dev/null || exit 0
+
+case $pid in
+    ""|*[!0-9]*) pid_json=null ;;
+    *) pid_json=$pid ;;
+esac
+
+# Find the controlling tty by walking up the ppid chain.
+find_tty() {
+    pid=$$
+    i=0
+    while [ "$pid" -gt 1 ] && [ "$i" -lt 25 ]; do
+        t=$(ps -o tty= -p "$pid" 2>/dev/null | tr -d ' ')
+        case "$t" in
+            ttys*) printf '/dev/%s\n' "$t"; return 0 ;;
+        esac
+        pid=$(ps -o ppid= -p "$pid" 2>/dev/null | tr -d ' ')
+        [ -z "$pid" ] && break
+        i=$((i+1))
+    done
+    return 0
+}
+
+terminal_tty=$(find_tty)
+
+updated=$(date -u +%Y-%m-%dT%H:%M:%SZ 2>/dev/null)
+tmp_file=$spool_dir/$id.json.tmp.$$
+
+if jq -n \
+    --arg id "$id" \
+    --arg agent "$agent" \
+    --arg status "$status" \
+    --arg detail "$detail" \
+    --arg project "$project" \
+    --arg cwd "$cwd" \
+    --arg updated "$updated" \
+    --arg term_program "${TERM_PROGRAM:-}" \
+    --arg tty "$terminal_tty" \
+    --arg iterm_session_id "${ITERM_SESSION_ID:-}" \
+    --arg wezterm_pane "${WEZTERM_PANE:-}" \
+    --arg kitty_window_id "${KITTY_WINDOW_ID:-}" \
+    --arg window_id "${WINDOWID:-}" \
+    --argjson pid "$pid_json" \
+    --argjson seq "$seq" \
+    '{
+        schema: 1,
+        id: $id,
+        agent: $agent,
+        pid: $pid,
+        project: (if $project == "" then null else $project end),
+        cwd: (if $cwd == "" then null else $cwd end),
+        status: $status,
+        detail: (if $detail == "" then null else $detail end),
+        updated: $updated,
+        started: null,
+        seq: $seq,
+        terminal: {
+            termProgram: (if $term_program == "" then null else $term_program end),
+            tty: (if $tty == "" then null else $tty end),
+            itermSessionId: (if $iterm_session_id == "" then null else $iterm_session_id end),
+            weztermPane: (if $wezterm_pane == "" then null else $wezterm_pane end),
+            kittyWindowId: (if $kitty_window_id == "" then null else $kitty_window_id end),
+            windowId: (if $window_id == "" then null else $window_id end)
+        },
+        source: "notch-emit"
+    }' > "$tmp_file" 2>/dev/null
+then
+    mv -f "$tmp_file" "$session_file" >/dev/null 2>&1
+else
+    rm -f "$tmp_file" >/dev/null 2>&1
+fi
+
+exit 0
