@@ -4,8 +4,8 @@ import SwiftUI
 
 @MainActor
 final class NotchWindowManager {
-    private typealias NotchedHUD = DynamicNotch<NotchPanelView, NotchPeekView, EmptyView>
-    private typealias FloatingPeek = DynamicNotch<NotchPeekView, EmptyView, EmptyView>
+    private typealias NotchedHUD = DynamicNotch<NotchPanelView, NotchPeekView, NotchPeekTrailingView>
+    private typealias FloatingPeek = DynamicNotch<NotchFloatingPeekView, EmptyView, EmptyView>
     private typealias FloatingPanel = DynamicNotch<NotchPanelView, EmptyView, EmptyView>
 
     private let environment: AppEnvironment
@@ -18,6 +18,7 @@ final class NotchWindowManager {
     private var floatingPanel: FloatingPanel?
     private var transitionTask: Task<Void, Never>?
     private var transitionGeneration = 0
+    private var renderedPanelSize: CGSize?
     private(set) var isExpanded = false
 
     init(environment: AppEnvironment, store: SessionStore, focusDispatcher: FocusDispatcher) {
@@ -43,6 +44,7 @@ final class NotchWindowManager {
         hoverController?.suspend()
         selectedScreen = screen
         isExpanded = false
+        renderedPanelSize = nil
 
         transitionGeneration += 1
         let generation = transitionGeneration
@@ -135,14 +137,13 @@ final class NotchWindowManager {
             screen.safeAreaInsets.top,
             screen.frame.maxY - screen.visibleFrame.maxY
         )
-        let width: CGFloat = 370
-        let height: CGFloat = 230
+        let panelSize = renderedPanelSize ?? CGSize(width: 700, height: 480)
         let contentRect = NotchGeometry.expandedContentRect(
             frameMidX: screen.frame.midX,
             frameMaxY: screen.frame.maxY,
             notchHeight: notchHeight,
-            width: width,
-            height: height
+            width: panelSize.width,
+            height: panelSize.height
         )
         return contentRect.contains(point)
     }
@@ -157,9 +158,17 @@ final class NotchWindowManager {
         let notch = NotchedHUD(
             hoverBehavior: [],
             style: .notch,
-            expanded: { NotchPanelView(store: store, focusDispatcher: focusDispatcher) },
+            expanded: { [weak self] in
+                NotchPanelView(
+                    store: store,
+                    focusDispatcher: focusDispatcher,
+                    onSizeChange: { [weak self] size in
+                        self?.updateRenderedPanelSize(size)
+                    }
+                )
+            },
             compactLeading: { NotchPeekView(store: store) },
-            compactTrailing: { EmptyView() }
+            compactTrailing: { NotchPeekTrailingView(store: store) }
         )
         notchedHUD = notch
 
@@ -174,12 +183,20 @@ final class NotchWindowManager {
         let peek = FloatingPeek(
             hoverBehavior: [],
             style: .floating,
-            expanded: { NotchPeekView(store: store) }
+            expanded: { NotchFloatingPeekView(store: store) }
         )
         let panel = FloatingPanel(
             hoverBehavior: [],
             style: .floating,
-            expanded: { NotchPanelView(store: store, focusDispatcher: focusDispatcher) }
+            expanded: { [weak self] in
+                NotchPanelView(
+                    store: store,
+                    focusDispatcher: focusDispatcher,
+                    onSizeChange: { [weak self] size in
+                        self?.updateRenderedPanelSize(size)
+                    }
+                )
+            }
         )
         floatingPeek = peek
         floatingPanel = panel
@@ -198,6 +215,11 @@ final class NotchWindowManager {
             .fullScreenAuxiliary,
             .stationary
         ])
+    }
+
+    private func updateRenderedPanelSize(_ size: CGSize) {
+        guard size.width > 0, size.height > 0 else { return }
+        renderedPanelSize = size
     }
 
     private func hideEveryNotch() async {

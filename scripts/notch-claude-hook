@@ -2,7 +2,7 @@
 
 status=${1:-}
 case $status in
-    starting|working|needs_me|done|remove) ;;
+    starting|working|tool|needs_me|done|remove) ;;
     *) exit 0 ;;
 esac
 
@@ -11,6 +11,7 @@ command -v jq >/dev/null 2>&1 || exit 0
 payload=$(cat 2>/dev/null)
 session_id=$(printf '%s' "$payload" | jq -r '.session_id // empty' 2>/dev/null)
 cwd=$(printf '%s' "$payload" | jq -r '.cwd // empty' 2>/dev/null)
+model=$(printf '%s' "$payload" | jq -r '.model // empty' 2>/dev/null)
 
 [ -n "$session_id" ] || exit 0
 
@@ -29,5 +30,81 @@ if [ -n "$cwd" ]; then
     project=$(basename "$cwd" 2>/dev/null)
 fi
 
-"$emitter" "$id" claude-code "$status" --cwd "$cwd" --project "$project" >/dev/null 2>&1
+emit_status() {
+    emit_value=$1
+    shift
+    if [ -n "$cwd" ]; then
+        set -- --cwd "$cwd" --project "$project" "$@"
+    fi
+    if [ -n "$model" ]; then
+        set -- --model "$model" "$@"
+    fi
+    "$emitter" "$id" claude-code "$emit_value" "$@" >/dev/null 2>&1
+}
+
+single_line() {
+    tr '\r\n' '  '
+}
+
+if [ "$status" = working ]; then
+    prompt=$(printf '%s' "$payload" | jq -r '.prompt // empty' 2>/dev/null)
+    if [ -n "$prompt" ]; then
+        notch_home=${NOTCH_HUD_HOME:-"$HOME/.notch-hud"}
+        session_file=$notch_home/sessions/$id.json
+        recorded_task=
+        if [ -f "$session_file" ]; then
+            recorded_task=$(jq -r '.task // empty' "$session_file" 2>/dev/null)
+        fi
+
+        if [ -z "$recorded_task" ]; then
+            task=$(printf '%s' "$prompt" | single_line | cut -c 1-60)
+            emit_status working --prompt "$prompt" --task "$task"
+        else
+            emit_status working --prompt "$prompt"
+        fi
+    else
+        emit_status working
+    fi
+    exit 0
+fi
+
+if [ "$status" = tool ]; then
+    tool_name=$(printf '%s' "$payload" | jq -r '.tool_name // empty' 2>/dev/null)
+    tool_line=
+
+    case $tool_name in
+        Bash)
+            command=$(printf '%s' "$payload" | jq -r '.tool_input.command // empty' 2>/dev/null | single_line | cut -c 1-48)
+            tool_line=Bash
+            [ -n "$command" ] && tool_line="Bash $command"
+            ;;
+        Edit|Write|Read|NotebookEdit)
+            file_path=$(printf '%s' "$payload" | jq -r '.tool_input.file_path // empty' 2>/dev/null)
+            file_name=${file_path##*/}
+            tool_line=$tool_name
+            [ -n "$file_name" ] && tool_line="$tool_name $file_name"
+            ;;
+        Grep|Glob)
+            pattern=$(printf '%s' "$payload" | jq -r '.tool_input.pattern // empty' 2>/dev/null | single_line | cut -c 1-32)
+            tool_line=$tool_name
+            [ -n "$pattern" ] && tool_line="$tool_name $pattern"
+            ;;
+        Task|Agent)
+            description=$(printf '%s' "$payload" | jq -r '.tool_input.description // "subtask"' 2>/dev/null | single_line)
+            tool_line="Agent $description"
+            ;;
+        *)
+            tool_line=$tool_name
+            ;;
+    esac
+
+    if [ -n "$tool_line" ]; then
+        emit_status working --tool-line "$tool_line"
+    else
+        emit_status working
+    fi
+    exit 0
+fi
+
+emit_status "$status"
 exit 0

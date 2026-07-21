@@ -142,6 +142,7 @@ final class HoverController: NSObject {
                 }
                 guard let self, !self.pointerIsInside, self.enterDelivered else { return }
                 self.enterDelivered = false
+                HoverDiag.log("EXIT delivered -> collapse()")
                 self.delegate?.hoverControllerDidExit(self)
             }
         }

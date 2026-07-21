@@ -7,6 +7,10 @@ struct SessionEnvelope: Codable, Sendable {
     let cwd: String?
     let status: SessionStatus
     let detail: String?
+    let task: String?
+    let prompt: String?
+    let toolLine: String?
+    let model: String?
     let updated: String
     let started: String?
     let seq: Int
@@ -22,6 +26,10 @@ struct SessionEnvelope: Codable, Sendable {
         case cwd
         case status
         case detail
+        case task
+        case prompt
+        case toolLine
+        case model
         case updated
         case started
         case seq
@@ -38,6 +46,10 @@ struct SessionEnvelope: Codable, Sendable {
         cwd: String? = nil,
         status: SessionStatus,
         detail: String? = nil,
+        task: String? = nil,
+        prompt: String? = nil,
+        toolLine: String? = nil,
+        model: String? = nil,
         updated: String,
         started: String? = nil,
         seq: Int,
@@ -52,6 +64,10 @@ struct SessionEnvelope: Codable, Sendable {
         self.cwd = cwd
         self.status = status
         self.detail = detail
+        self.task = task
+        self.prompt = prompt
+        self.toolLine = toolLine
+        self.model = model
         self.updated = updated
         self.started = started
         self.seq = seq
@@ -69,6 +85,10 @@ struct SessionEnvelope: Codable, Sendable {
         cwd = try container.decodeIfPresent(String.self, forKey: .cwd)
         status = try container.decode(SessionStatus.self, forKey: .status)
         detail = try container.decodeIfPresent(String.self, forKey: .detail)
+        task = try container.decodeIfPresent(String.self, forKey: .task)
+        prompt = try container.decodeIfPresent(String.self, forKey: .prompt)
+        toolLine = try container.decodeIfPresent(String.self, forKey: .toolLine)
+        model = try container.decodeIfPresent(String.self, forKey: .model)
         updated = try container.decode(String.self, forKey: .updated)
         started = try container.decodeIfPresent(String.self, forKey: .started)
         seq = try container.decode(Int.self, forKey: .seq)

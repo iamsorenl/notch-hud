@@ -4,38 +4,37 @@ struct NotchPeekView: View {
     let store: SessionStore
 
     var body: some View {
-        HStack(spacing: 7) {
-            Text("\(store.total)")
-                .font(.system(size: 13, weight: .semibold, design: .rounded))
-                .foregroundStyle(.white)
-                .monospacedDigit()
-
-            HStack(spacing: 4) {
-                ForEach(statusDots, id: \.self) { status in
-                    Circle()
-                        .fill(status.color)
-                        .frame(width: 6, height: 6)
+        HStack(spacing: 6) {
+            HStack(spacing: 2) {
+                ForEach(Array(store.sessions.prefix(3))) { session in
+                    AgentSprite(status: session.displayStatus, size: 12)
                 }
             }
+
+            if let compactStatus {
+                Text(compactStatus.label)
+                    .font(.system(size: 11, weight: .medium, design: .monospaced))
+                    .foregroundStyle(compactStatus.color)
+                    .lineLimit(1)
+            }
         }
-        .padding(.horizontal, 10)
-        .padding(.vertical, 6)
-        .background(Color.notchBackground)
-        .clipShape(.rect(cornerRadius: 10))
         .fixedSize()
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(Text(accessibilitySummary))
     }
 
-    private var statusDots: [DisplayStatus] {
-        var statuses: [DisplayStatus] = []
-        for session in store.sessions where !statuses.contains(session.displayStatus) {
-            statuses.append(session.displayStatus)
-            if statuses.count == 3 {
-                break
-            }
+    private var compactStatus: (label: String, color: Color)? {
+        let counts = store.counts
+        if counts.needsMe > 0 {
+            return ("Needs you", DisplayStatus.needsMe.color)
         }
-        return statuses
+        if counts.working > 0 {
+            return ("Working…", .white)
+        }
+        if store.total > 0, counts.done == store.total {
+            return ("Done", DisplayStatus.done.color)
+        }
+        return nil
     }
 
     private var accessibilitySummary: String {
@@ -45,5 +44,5 @@ struct NotchPeekView: View {
 }
 
 extension Color {
-    static let notchBackground = Color(red: 0.04, green: 0.04, blue: 0.047)
+    static let notchBackground = Color(red: 0.078, green: 0.078, blue: 0.086)
 }

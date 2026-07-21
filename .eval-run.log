@@ -2,10 +2,13 @@
 Building for debugging...
 [0/3] Write swift-version--1AB21518FC5DEDBE.txt
 Build of product 'NotchHUD' complete! (0.14s)
-2026-07-20 12:16:52.086 NotchHUD[67273:9604967] [HoverDiag] PIN notchRect=(918.0, 1291.0, 220.0, 38.0) hitRect=(768.0, 1275.0, 520.0, 54.0) screenFrame=(0.0, 0.0, 2056.0, 1329.0) monitors=true/true
-2026-07-20 12:16:55.726 NotchHUD[67273:9604967] [HoverDiag] ENTER delivered -> expand()
-2026-07-20 12:16:55.726 NotchHUD[67273:9604967] [HoverDiag] expand() called isExpanded=false selectedScreen=true notchedHUD=true
-2026-07-20 12:16:58.656 NotchHUD[67273:9604967] [HoverDiag] ENTER delivered -> expand()
-2026-07-20 12:16:58.657 NotchHUD[67273:9604967] [HoverDiag] expand() called isExpanded=false selectedScreen=true notchedHUD=true
-2026-07-20 12:17:01.535 NotchHUD[67273:9604967] [HoverDiag] ENTER delivered -> expand()
-2026-07-20 12:17:01.536 NotchHUD[67273:9604967] [HoverDiag] expand() called isExpanded=false selectedScreen=true notchedHUD=true
+2026-07-21 16:49:23.852 NotchHUD[31288:10962116] [HoverDiag] PIN notchRect=(918.0, 1291.0, 220.0, 38.0) hitRect=(768.0, 1275.0, 520.0, 54.0) screenFrame=(0.0, 0.0, 2056.0, 1329.0) monitors=true/true
+2026-07-21 16:49:27.865 NotchHUD[31288:10962116] [HoverDiag] ENTER delivered -> expand()
+2026-07-21 16:49:27.865 NotchHUD[31288:10962116] [HoverDiag] expand() called isExpanded=false selectedScreen=true notchedHUD=true
+2026-07-21 16:49:29.944 NotchHUD[31288:10962116] [HoverDiag] EXIT delivered -> collapse()
+2026-07-21 16:49:31.810 NotchHUD[31288:10962116] [HoverDiag] ENTER delivered -> expand()
+2026-07-21 16:49:31.810 NotchHUD[31288:10962116] [HoverDiag] expand() called isExpanded=false selectedScreen=true notchedHUD=true
+2026-07-21 16:49:33.893 NotchHUD[31288:10962116] [HoverDiag] EXIT delivered -> collapse()
+2026-07-21 16:49:35.764 NotchHUD[31288:10962116] [HoverDiag] ENTER delivered -> expand()
+2026-07-21 16:49:35.765 NotchHUD[31288:10962116] [HoverDiag] expand() called isExpanded=false selectedScreen=true notchedHUD=true
+2026-07-21 16:49:37.830 NotchHUD[31288:10962116] [HoverDiag] EXIT delivered -> collapse()

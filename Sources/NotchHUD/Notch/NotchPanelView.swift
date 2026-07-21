@@ -4,56 +4,137 @@ import SwiftUI
 struct NotchPanelView: View {
     let store: SessionStore
     let focusDispatcher: FocusDispatcher
+    let onSizeChange: @MainActor (CGSize) -> Void
 
     @State private var feedback: [String: SessionRowFeedback] = [:]
+    @State private var sessionListHeight: CGFloat?
+
+    private let maximumPanelHeight: CGFloat = 520
+    private let maximumSessionListHeight: CGFloat = 468
+
+    private let panelShape = UnevenRoundedRectangle(
+        cornerRadii: RectangleCornerRadii(
+            topLeading: 0,
+            bottomLeading: 22,
+            bottomTrailing: 22,
+            topTrailing: 0
+        ),
+        style: .continuous
+    )
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack {
-                Text("Active sessions")
-                    .font(.system(size: 13, weight: .semibold))
-                    .foregroundStyle(.white)
+        VStack(alignment: .leading, spacing: 10) {
+            header
 
-                Spacer()
-
-                Text("\(store.total)")
-                    .font(.system(size: 12, weight: .medium, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.6))
-                    .monospacedDigit()
-            }
-
-            Divider()
-                .overlay(.white.opacity(0.12))
-
-            if store.sessions.isEmpty {
-                Text("No active sessions")
-                    .font(.system(size: 13))
-                    .foregroundStyle(.white.opacity(0.5))
-                    .frame(maxWidth: .infinity, minHeight: 42, alignment: .center)
-            } else {
-                VStack(spacing: 5) {
-                    ForEach(store.sessions) { session in
-                        SessionRowView(
-                            session: session,
-                            feedback: feedback[session.id],
-                            onSelect: focus,
-                            onGrantAccess: openAutomationSettings
-                        )
+            TimelineView(.periodic(from: .now, by: 30)) { context in
+                if store.sessions.isEmpty {
+                    emptyState
+                } else {
+                    ScrollView(.vertical) {
+                        VStack(spacing: 6) {
+                            ForEach(store.sessions) { session in
+                                SessionRowView(
+                                    session: session,
+                                    now: context.date,
+                                    feedback: feedback[session.id],
+                                    onSelect: focus,
+                                    onGrantAccess: openAutomationSettings
+                                )
+                            }
+                        }
+                        .frame(maxWidth: .infinity)
+                        .background {
+                            GeometryReader { proxy in
+                                Color.clear
+                                    .onAppear {
+                                        sessionListHeight = proxy.size.height
+                                    }
+                                    .onChange(of: proxy.size.height) { _, height in
+                                        sessionListHeight = height
+                                    }
+                            }
+                        }
                     }
+                    .frame(
+                        height: min(
+                            sessionListHeight ?? maximumSessionListHeight,
+                            maximumSessionListHeight
+                        )
+                    )
                 }
             }
         }
-        .padding(14)
-        .frame(width: 320)
-        .background(Color.notchBackground)
-        .clipShape(.rect(cornerRadius: 10))
+        .padding(.horizontal, 14)
+        .padding(.top, 10)
+        .padding(.bottom, 14)
+        .frame(maxWidth: 680, maxHeight: maximumPanelHeight, alignment: .top)
+        .fixedSize(horizontal: false, vertical: true)
+        .background(Color.notchBackground.opacity(0.97))
+        .clipShape(panelShape)
         .overlay {
-            RoundedRectangle(cornerRadius: 10)
-                .stroke(.white.opacity(0.08), lineWidth: 1)
+            panelShape
+                .stroke(.white.opacity(0.08), lineWidth: 0.5)
+        }
+        .background {
+            GeometryReader { proxy in
+                Color.clear
+                    .onAppear {
+                        onSizeChange(proxy.size)
+                    }
+                    .onChange(of: proxy.size) { _, size in
+                        onSizeChange(size)
+                    }
+            }
         }
     }
 
+    private var header: some View {
+        HStack(alignment: .center) {
+            HStack(spacing: 4) {
+                summaryPart(store.counts.working, "working", color: DisplayStatus.working.color)
+                summarySeparator
+                summaryPart(store.counts.needsMe, "needs you", color: DisplayStatus.needsMe.color)
+                summarySeparator
+                summaryPart(store.counts.done, "done", color: DisplayStatus.done.color)
+            }
+
+            Spacer()
+
+            Image(systemName: "gearshape")
+                .font(.system(size: 12, weight: .medium))
+                .foregroundStyle(.white.opacity(0.5))
+                .accessibilityLabel("Settings")
+        }
+        .font(.system(size: 11, weight: .medium, design: .monospaced))
+    }
+
+    private func summaryPart(_ count: Int, _ label: String, color: Color) -> some View {
+        HStack(spacing: 3) {
+            Text("\(count)")
+                .foregroundStyle(color)
+                .monospacedDigit()
+            Text(label)
+                .foregroundStyle(.white.opacity(0.58))
+        }
+    }
+
+    private var summarySeparator: some View {
+        Text("·")
+            .foregroundStyle(.white.opacity(0.28))
+    }
+
+    private var emptyState: some View {
+        HStack(spacing: 8) {
+            AgentSprite(status: .idle, size: 18)
+            Text("No active sessions")
+                .font(.system(size: 12, weight: .medium, design: .monospaced))
+                .foregroundStyle(.white.opacity(0.48))
+        }
+        .frame(maxWidth: .infinity, minHeight: 64, alignment: .center)
+    }
+
     private func focus(_ session: Session) {
+        guard session.terminal?.tty != nil else { return }
         feedback[session.id] = nil
 
         Task {

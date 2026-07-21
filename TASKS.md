@@ -31,24 +31,33 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` verified done
 - [x] Promoted hooks to GLOBAL ~/.claude/settings.json (additive, backup made, all existing hooks preserved) + added SessionEnd→remove for clean lifecycle. Project-scoped copy removed.
 
 ## M2 — Click to focus
-- [ ] `FocusDispatcher` + `FocusStrategy` protocol + `AppleScriptRunner`
-- [ ] `TerminalAppStrategy` (AppleScript match by tty, raise window/tab)
-- [ ] `NSAppleEventsUsageDescription` in Info.plist; deny-path affordance
-- [ ] **GATE M2:** click a row → correct Terminal tab raises; Automation prompt grant works; deny shows affordance
+- [x] `FocusDispatcher` + `FocusStrategy` protocol + strategies (TerminalApp primary, iTerm2/WezTerm/Kitty stubs) — builds, 8/8 tests
+- [x] tty ppid-walk fix in notch-emit — verified captures `/dev/ttys012`
+- [x] `NSAppleEventsUsageDescription` in Info.plist; rows clickable with grant affordance
+- [x] **M2.5: real .app bundle BEFORE TCC grant** — `scripts/make-app.sh`, ad-hoc signed `com.actionable.notchhud`, launched via `open`, hover+watcher verified from bundle (screenshot showed 4 REAL sessions incl. email-triage agent). Initial git commit `fea82f7`.
+- [~] **GATE M2 (needs Cooper):** click a live row in the bundled app → Automation prompt (grant it) → correct Terminal tab raises
+- Note for M3: headless agents (email-triage etc.) fire hooks too — tag ttyless sessions as background, dim them, exclude from focus
 
-## M3 — Full Claude state machine + staleness
-- [ ] Idempotent diff-preview installer adds SessionStart/Notification/SessionEnd hooks
-- [ ] `StalenessSweeper` (90s demote) + pid reconciliation
-- [ ] **GATE M3:** permission prompt → Needs-me state; `kill -9` mid-turn → row demotes to unknown in 90s then drops
+## DESIGN PIVOT 2026-07-21 (Cooper: first design "waaaay off")
+North star = Vibe Island (vibeisland.app, @edwardluox). References: `assets/reference/*.jpg` + demo mp4. Match its information design + interaction model with OUR OWN sprite art/identity. Killer missing feature: ACT from the notch (inline permission approvals with diffs). Milestones re-cut below; old M3-M5 superseded.
 
-## M4 — Generic poller
-- [ ] `ProcessPoller` (ps tpgid busy/idle, agent regex, source-rank so it never overwrites hook files)
-- [ ] **GATE M4:** non-hooked agent appears Working then clears on exit; never clobbers a live Claude file
+## M3 — Console redesign + rich live status (spec: specs/M3-console-redesign.md)
+- [~] Dispatched to Codex: extended-notch info pill (sprites + mono "Working…" + N sessions), rich cards (project · task / You: prompt / live tool line / agent-model-terminal-elapsed chips), AgentSprite 8×8 own art, emitter merge-preservation, PreToolUse tool-line capture, real-window-frame hover rect
+- [ ] Manager: install PreToolUse hook globally (additive) after build gate
+- [ ] **GATE M3:** build+tests green; fixture full-card screenshot; real session shows prompt + tool line updating live; Cooper approves the new look
 
-## M5 — Codex adapter
-- [ ] `notch-codex-notify` wrapper (maps turn-end → done, chain-execs SkyComputerUseClient)
-- [ ] Wire poller to supply Codex `working`
-- [ ] **GATE M5:** Codex turn → Working (poller) → Done (notify); computer-use still functions
+## M4 — Act from the notch (inline approvals) + truthfulness
+- [ ] PreToolUse decision bridge (pending-approval file + decision file + ≤55s timeout → terminal fallback)
+- [ ] Permission card UI: diff render (red/green), Deny / Allow Once / Bypass, ⌘Y/⌘N
+- [ ] Notification hook → needs_me + amber pulse on resting pill; question cards read-only
+- [ ] StalenessSweeper (90s demote, 15min drop) + pid reconciliation; ttyless sessions dimmed
+- [ ] **GATE M4:** real permission prompt pops the card; Allow Once runs the tool; Deny blocks; timeout falls back; kill -9 demotes ≤90s
+
+## M5 — Codex adapter + generic poller + usage meters
+- [ ] `notch-codex-notify` chain-exec wrapper (turn-end → done, SkyComputerUseClient preserved)
+- [ ] `ProcessPoller` (agent regex, source-rank protected, skip ttyless workers)
+- [ ] Claude usage meters (5h/7d) in header if a clean local source exists (probe `claude usage` / OAuth)
+- [ ] **GATE M5:** Codex working→done with computer-use intact; non-hooked agent appears/clears; meters real or cleanly absent
 
 ## M6 — Design polish + productize
 - [ ] Liquid Glass material (macOS 26) + NSVisualEffectView fallback; dark-glass panel per art direction

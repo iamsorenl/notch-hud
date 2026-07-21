@@ -19,6 +19,7 @@ private final class AppDelegate: NSObject, NSApplicationDelegate {
     private var sessionStore: SessionStore?
     private var focusDispatcher: FocusDispatcher?
     private var spoolWatcher: SpoolWatcher?
+    private var stalenessSweeper: StalenessSweeper?
     private var windowManager: NotchWindowManager?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
@@ -28,6 +29,12 @@ private final class AppDelegate: NSObject, NSApplicationDelegate {
         let sessionStore = SessionStore()
         let focusDispatcher = FocusDispatcher()
         let spoolWatcher = SpoolWatcher(spoolURL: environment.spoolURL, store: sessionStore)
+        let stalenessSweeper = StalenessSweeper(
+            spoolURL: environment.spoolURL,
+            store: sessionStore,
+            workingStaleSeconds: environment.workingStaleSeconds,
+            dropSeconds: environment.dropSeconds
+        )
         let windowManager = NotchWindowManager(
             environment: environment,
             store: sessionStore,
@@ -37,9 +44,11 @@ private final class AppDelegate: NSObject, NSApplicationDelegate {
         self.sessionStore = sessionStore
         self.focusDispatcher = focusDispatcher
         self.spoolWatcher = spoolWatcher
+        self.stalenessSweeper = stalenessSweeper
         self.windowManager = windowManager
 
         spoolWatcher.start()
+        stalenessSweeper.start()
         windowManager.boot()
 
         NotificationCenter.default.addObserver(
@@ -51,6 +60,7 @@ private final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationWillTerminate(_ notification: Notification) {
+        stalenessSweeper?.stop()
         spoolWatcher?.stop()
         NotificationCenter.default.removeObserver(self)
     }
