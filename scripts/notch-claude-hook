@@ -2,7 +2,7 @@
 
 status=${1:-}
 case $status in
-    starting|working|tool|needs_me|done|remove) ;;
+    starting|working|tool|needs_me|done|remove|notify) ;;
     *) exit 0 ;;
 esac
 
@@ -46,8 +46,32 @@ single_line() {
     tr '\r\n' '  '
 }
 
+if [ "$status" = notify ]; then
+    message=$(printf '%s' "$payload" | jq -r '
+        [
+            .message,
+            .title,
+            .notification.message,
+            .notification.title
+        ]
+        | map(select(type == "string" and length > 0))
+        | first
+        // empty
+    ' 2>/dev/null | single_line | cut -c 1-80)
+    if [ -n "$message" ]; then
+        emit_status needs_me --detail "$message"
+    else
+        emit_status needs_me
+    fi
+    exit 0
+fi
+
 if [ "$status" = working ]; then
     prompt=$(printf '%s' "$payload" | jq -r '.prompt // empty' 2>/dev/null)
+    # Skip harness-injected turns (task notifications, system reminders, command output)
+    case "$prompt" in
+      "<"*|"["*|*task-notification*|*system-reminder*) prompt="" ;;
+    esac
     if [ -n "$prompt" ]; then
         notch_home=${NOTCH_HUD_HOME:-"$HOME/.notch-hud"}
         session_file=$notch_home/sessions/$id.json

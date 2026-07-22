@@ -22,7 +22,8 @@ final class DynamicNotchPanel: NSPanel {
         )
         self.hasShadow = false
         self.backgroundColor = .clear
-        self.level = .screenSaver
+        self.ignoresMouseEvents = true
+        self.level = .statusBar
         self.collectionBehavior = [.canJoinAllSpaces, .stationary]
     }
 

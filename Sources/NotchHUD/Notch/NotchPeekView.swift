@@ -1,9 +1,26 @@
+import Foundation
 import SwiftUI
 
 struct NotchPeekView: View {
     let store: SessionStore
+    let pendingStore: PendingStore
 
     var body: some View {
+        Group {
+            if pendingStore.hasPending {
+                TimelineView(.animation(minimumInterval: 1.0 / 30.0)) { context in
+                    peekContent(pulseOpacity(at: context.date))
+                }
+            } else {
+                peekContent(1)
+            }
+        }
+        .fixedSize()
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(Text(accessibilitySummary))
+    }
+
+    private func peekContent(_ pulseOpacity: Double) -> some View {
         HStack(spacing: 6) {
             HStack(spacing: 2) {
                 ForEach(Array(store.sessions.prefix(3))) { session in
@@ -18,12 +35,21 @@ struct NotchPeekView: View {
                     .lineLimit(1)
             }
         }
-        .fixedSize()
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel(Text(accessibilitySummary))
+        .padding(.horizontal, pendingStore.hasPending ? 6 : 0)
+        .padding(.vertical, pendingStore.hasPending ? 3 : 0)
+        .background {
+            if pendingStore.hasPending {
+                Capsule()
+                    .fill(DisplayStatus.needsMe.color.opacity(0.15))
+                    .opacity(pulseOpacity)
+            }
+        }
     }
 
     private var compactStatus: (label: String, color: Color)? {
+        if pendingStore.hasPending {
+            return ("Approve?", DisplayStatus.needsMe.color)
+        }
         let counts = store.counts
         if counts.needsMe > 0 {
             return ("Needs you", DisplayStatus.needsMe.color)
@@ -38,8 +64,16 @@ struct NotchPeekView: View {
     }
 
     private var accessibilitySummary: String {
+        if pendingStore.hasPending {
+            return "Approval needed for \(pendingStore.approvals.count) session"
+        }
         let counts = store.counts
         return "\(store.total) active sessions, \(counts.working) working, \(counts.needsMe) need attention, \(counts.done) done"
+    }
+
+    private func pulseOpacity(at date: Date) -> Double {
+        let phase = date.timeIntervalSinceReferenceDate.truncatingRemainder(dividingBy: 1)
+        return 0.925 + (0.075 * cos(phase * 2 * .pi))
     }
 }
 

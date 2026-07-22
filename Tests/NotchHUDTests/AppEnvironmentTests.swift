@@ -9,4 +9,6 @@ import Testing
 
     #expect(spoolPath.hasSuffix("/.notch-hud/sessions"))
     #expect(spoolPath.hasPrefix(homePath + "/"))
+    #expect(environment.pendingURL.path.hasSuffix("/.notch-hud/pending"))
+    #expect(environment.decisionsURL.path.hasSuffix("/.notch-hud/decisions"))
 }

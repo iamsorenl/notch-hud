@@ -16,10 +16,11 @@ struct NotchPeekTrailingView: View {
 
 struct NotchFloatingPeekView: View {
     let store: SessionStore
+    let pendingStore: PendingStore
 
     var body: some View {
         HStack(spacing: 12) {
-            NotchPeekView(store: store)
+            NotchPeekView(store: store, pendingStore: pendingStore)
             NotchPeekTrailingView(store: store)
         }
         .padding(.horizontal, 10)

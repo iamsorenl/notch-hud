@@ -56,7 +56,8 @@ final class HoverController: NSObject {
             panel.isOpaque = false
             panel.backgroundColor = .clear
             panel.hasShadow = false
-            panel.level = .screenSaver
+            panel.ignoresMouseEvents = true
+            panel.level = .statusBar
             panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .stationary]
             panel.acceptsMouseMovedEvents = true
             self.trackingPanel = panel

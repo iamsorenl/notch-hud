@@ -4,9 +4,33 @@ import Observation
 @MainActor
 final class SessionStore {
     private(set) var sessions: [Session] = []
+    private var sourceSessions: [Session] = []
+    private var pendingSessionIDs = Set<String>()
 
     func apply(_ sessions: [Session]) {
-        self.sessions = sessions.sorted { lhs, rhs in
+        sourceSessions = sessions
+        rebuildSessions()
+    }
+
+    func markPendingApprovals(sessionIDs: Set<String>) {
+        pendingSessionIDs = Set(sessionIDs.flatMap { sessionID in
+            [sessionID, "claude-\(sessionID)"]
+        })
+        rebuildSessions()
+    }
+
+    var sessionsWithoutPendingOverlay: [Session] {
+        sourceSessions
+    }
+
+    private func rebuildSessions() {
+        sessions = sourceSessions.map { session in
+            var session = session
+            if pendingSessionIDs.contains(session.id) {
+                session.status = .needs_me
+            }
+            return session
+        }.sorted { lhs, rhs in
             let lhsRank = Self.sortRank(for: lhs.displayStatus)
             let rhsRank = Self.sortRank(for: rhs.displayStatus)
 

@@ -42,7 +42,7 @@ final class StalenessSweeper {
     }
 
     private func sweep(now: Date = Date()) {
-        var sessions = store.sessions
+        var sessions = store.sessionsWithoutPendingOverlay
         var deletedSessionIDs = Set<String>()
         var didChangeStore = false
 

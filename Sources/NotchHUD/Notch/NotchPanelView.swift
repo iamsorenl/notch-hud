@@ -3,14 +3,19 @@ import SwiftUI
 
 struct NotchPanelView: View {
     let store: SessionStore
+    let pendingStore: PendingStore
     let focusDispatcher: FocusDispatcher
+    let decisionWriter: ApprovalDecisionWriter
+    let onApprovalDismiss: @MainActor (String) -> Void
     let onSizeChange: @MainActor (CGSize) -> Void
 
     @State private var feedback: [String: SessionRowFeedback] = [:]
     @State private var sessionListHeight: CGFloat?
 
     private let maximumPanelHeight: CGFloat = 520
-    private let maximumSessionListHeight: CGFloat = 468
+    private var maximumSessionListHeight: CGFloat {
+        pendingStore.hasPending ? 205 : 468
+    }
 
     private let panelShape = UnevenRoundedRectangle(
         cornerRadii: RectangleCornerRadii(
@@ -25,6 +30,14 @@ struct NotchPanelView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             header
+
+            if let approval = pendingStore.current {
+                ApprovalCardView(
+                    approval: approval,
+                    decisionWriter: decisionWriter,
+                    onDismiss: onApprovalDismiss
+                )
+            }
 
             TimelineView(.periodic(from: .now, by: 30)) { context in
                 if store.sessions.isEmpty {
@@ -65,9 +78,14 @@ struct NotchPanelView: View {
             }
         }
         .padding(.horizontal, 14)
-        .padding(.top, 10)
+        .padding(.top, 6)
         .padding(.bottom, 14)
-        .frame(maxWidth: 680, maxHeight: maximumPanelHeight, alignment: .top)
+        .frame(
+            minWidth: 680,
+            maxWidth: 680,
+            maxHeight: maximumPanelHeight,
+            alignment: .top
+        )
         .fixedSize(horizontal: false, vertical: true)
         .background(Color.notchBackground.opacity(0.97))
         .clipShape(panelShape)
