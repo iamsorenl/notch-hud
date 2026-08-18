@@ -4,6 +4,11 @@ DerivedData/
 *.xcodeproj
 *.xcworkspace
 .DS_Store
+# agent working debris: root screenshots, run logs, scrape caches
+/*.png
+*.log
+/.codex/
+/.firecrawl/
 # never commit secrets / signing
 *.p12
 *.cer

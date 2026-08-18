@@ -1,4 +1,0 @@
-# Project worker model for `codex exec` dispatch (manager = Claude, worker = GPT-5.6 Sol).
-# NOTE: this Codex version ignores `profiles` in project-local config; reasoning effort
-# is passed inline via `-c model_reasoning_effort=high` on each dispatch instead.
-model = "gpt-5.6-sol"
