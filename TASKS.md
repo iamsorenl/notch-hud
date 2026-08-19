@@ -70,3 +70,10 @@ North star = Vibe Island (vibeisland.app, @edwardluox). References: `assets/refe
 ---
 ## Completion condition (the `/goal`)
 Every box above `[x]`, `swift build` exits 0, the app launches, and each GATE has been confirmed on screen. Stop after the run if all gates green, or halt for a human on any gate that needs visual judgment.
+
+## M6 — Recent sessions & resume (spec: specs/M6-recent-sessions.md)
+- [ ] `SessionIndex` — head-only transcript scan (~/.claude/projects), pure parse/plan + fixtures
+- [ ] `ResumeLauncher` — Terminal.app new tab `claude --resume`, clipboard fallback on denied automation
+- [ ] `RecentsSectionView` + `RecentSessionRowView` — filter chips (All · per-project · +N), cap 8, muted styling
+- [ ] Wire into `NotchPanelView`; lazy refresh on expand
+- [ ] **GATE M6:** tests green; Cooper: recents render with chips, click resumes in Terminal, row promotes to Live
