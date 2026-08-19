@@ -24,7 +24,7 @@ final class NotchWindowManager {
     /// Ghost mode: the resting pill is invisible so it never covers screen
     /// content, but the hover region stays armed — hovering the notch area
     /// still drops the panel. Persisted across launches.
-    static let ghostDefaultsKey = "pillGhosted"
+    nonisolated static let ghostDefaultsKey = "pillGhosted"
     var isGhosted: Bool { panelPrefs.ghosted }
 
     func setGhosted(_ ghosted: Bool) {
