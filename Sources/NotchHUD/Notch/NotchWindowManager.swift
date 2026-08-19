@@ -87,27 +87,41 @@ final class NotchWindowManager {
         removeInteractivePanel()
     }
 
+    /// Display transitions (lid open/close, plug/unplug) fire a burst of
+    /// didChangeScreenParameters notifications, and mid-burst the screen list
+    /// is transitional — the built-in can still be listed while dissolving.
+    /// Two hard-won rules live here:
+    /// 1. Serial + debounced: the new task JOINS the cancelled predecessor
+    ///    (a cancelled task mid-expand still creates its window afterwards),
+    ///    then waits out the burst before acting.
+    /// 2. Final-state-driven: the target screen is computed AFTER the debounce,
+    ///    never captured from the notification, and teardown closes windows
+    ///    synchronously — animated hides during display churn orphan windows.
     func repinToBuiltInScreen() {
-        guard let screen = preferredScreen() else {
-            NSLog("NotchHUD could not find a screen to pin to.")
-            return
-        }
-
         hoverController?.suspend()
-        selectedScreen = screen
         resetExpansionState(reason: .manual)
         renderedPanelSize = nil
 
         transitionGeneration += 1
         let generation = transitionGeneration
-        transitionTask?.cancel()
+        let previous = transitionTask
+        previous?.cancel()
         transitionTask = Task { [weak self] in
-            guard let self else { return }
-            await self.hideEveryNotch()
+            _ = await previous?.value
+            guard let self, self.transitionGeneration == generation else { return }
+
+            try? await Task.sleep(for: .milliseconds(400))
             guard self.transitionGeneration == generation else { return }
 
             self.clearNotches()
             self.closeOrphanedNotchWindows()
+
+            guard let screen = self.preferredScreen() else {
+                NSLog("NotchHUD could not find a screen to pin to.")
+                return
+            }
+            self.selectedScreen = screen
+
             if screen.safeAreaInsets.top > 0 {
                 await self.installNotchedHUD(on: screen, generation: generation)
             } else {
@@ -116,6 +130,7 @@ final class NotchWindowManager {
             }
 
             guard self.transitionGeneration == generation, !self.isExpanded else { return }
+            self.closeOrphanedNotchWindows(keepingCurrent: true)
             self.installInteractivePanel()
             self.hoverController?.pin(to: screen)
             if self.pendingStore.hasPending {
@@ -503,17 +518,19 @@ final class NotchWindowManager {
         floatingPeek = nil
     }
 
-    /// Lid transitions fire several screen-change notifications in a burst;
-    /// a repin task cancelled mid-hide can orphan a HUD window after its
-    /// reference was dropped — seen as a black notch "ghost" on the external
-    /// display. This runs right after clearNotches(), when every legitimate
-    /// reference is nil, so any DynamicNotchKit panel still alive is a ghost:
-    /// close it outright, no animation. The last repin in a burst always runs
-    /// to completion, so the final state is clean even if earlier sweeps were
-    /// themselves cancelled.
-    private func closeOrphanedNotchWindows() {
+    /// Closes DynamicNotchKit panels that no live reference owns. After
+    /// clearNotches() every legitimate reference is nil, so all kit panels are
+    /// ghosts; with `keepingCurrent` the freshly installed HUD's window is
+    /// spared and anything else (e.g. created by an interleaved task) goes.
+    private func closeOrphanedNotchWindows(keepingCurrent: Bool = false) {
+        let current: Set<NSWindow> = keepingCurrent
+            ? Set([notchedHUD?.windowController?.window,
+                   floatingPeek?.windowController?.window].compactMap { $0 })
+            : []
+
         for window in NSApp.windows
-        where String(describing: type(of: window)) == "DynamicNotchPanel" {
+        where String(describing: type(of: window)) == "DynamicNotchPanel"
+            && !current.contains(window) {
             window.close()
         }
     }
