@@ -26,7 +26,9 @@ struct NotchPanelView: View {
 
     private let maximumPanelHeight: CGFloat = 520
     private var maximumSessionListHeight: CGFloat {
-        pendingStore.hasPending ? 205 : 468
+        // Budget: panel max (520) minus header, tab strip, and paddings —
+        // otherwise the list's last row clips under the bottom rounding.
+        pendingStore.hasPending ? 175 : 434
     }
 
     private let panelShape = UnevenRoundedRectangle(

@@ -23,7 +23,9 @@ struct SessionIndex: Sendable {
 
     /// Newest transcripts per page; the view raises the limit via Load more.
     static let pageSize = 40
-    private static let headByteLimit = 64 * 1024
+    // 256 KB: some transcripts open with multi-hundred-KB snapshot lines
+    // before the title/cwd records; 64 KB missed them.
+    private static let headByteLimit = 256 * 1024
     private static let headLineLimit = 200
 
     let rootURL: URL
@@ -106,8 +108,8 @@ struct SessionIndex: Sendable {
                 let id = candidate.url.deletingPathExtension().lastPathComponent
                 guard ResumeLauncher.isValidSessionID(id) else { return nil }
                 let meta = Self.parseHead(Self.readHeadLines(of: candidate.url))
-                let cwd = meta.cwd ?? candidate.url.deletingLastPathComponent().lastPathComponent
-                let projectName = (cwd as NSString).lastPathComponent
+                let projectName = meta.cwd.map { ($0 as NSString).lastPathComponent }
+                    ?? Self.readableSlug(candidate.url.deletingLastPathComponent().lastPathComponent)
                 return RecentSession(
                     id: id,
                     title: meta.aiTitle ?? meta.lastPrompt ?? projectName,
@@ -121,6 +123,16 @@ struct SessionIndex: Sendable {
             Self.plan(candidates: sessions, liveSessionIDs: liveSessionIDs, limit: limit),
             candidates.count > limit
         )
+    }
+
+    /// Project directory slugs are cwd paths with "/" mangled to "-"
+    /// ("-Users-Soren-Desktop-notch-hud"). The path can't be reconstructed
+    /// reliably, but stripping the home-directory prefix makes the fallback
+    /// label readable ("Desktop-notch-hud").
+    static func readableSlug(_ slug: String) -> String {
+        let homeSlug = NSHomeDirectory().replacingOccurrences(of: "/", with: "-")
+        guard slug.hasPrefix("\(homeSlug)-") else { return slug }
+        return String(slug.dropFirst(homeSlug.count + 1))
     }
 
     private static func readHeadLines(of url: URL) -> [String] {
