@@ -92,6 +92,13 @@ private final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     @objc
+    private func toggleGhost(_ sender: NSMenuItem) {
+        let ghosted = !(windowManager?.isGhosted ?? false)
+        windowManager?.setGhosted(ghosted)
+        sender.state = ghosted ? .on : .off
+    }
+
+    @objc
     private func screenParametersDidChange(_ notification: Notification) {
         windowManager?.repinToBuiltInScreen()
     }
@@ -100,7 +107,7 @@ private final class AppDelegate: NSObject, NSApplicationDelegate {
         let statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
         if let button = statusItem.button {
             let image = NSImage(
-                systemSymbolName: "checkmark.shield",
+                systemSymbolName: "rectangle.topthird.inset.filled",
                 accessibilityDescription: "NotchHUD"
             )
             image?.isTemplate = true
@@ -109,6 +116,15 @@ private final class AppDelegate: NSObject, NSApplicationDelegate {
         }
 
         let menu = NSMenu()
+        let ghostItem = NSMenuItem(
+            title: "Hide notch (hover still works)",
+            action: #selector(toggleGhost(_:)),
+            keyEquivalent: ""
+        )
+        ghostItem.target = self
+        ghostItem.state = (windowManager?.isGhosted ?? false) ? .on : .off
+        menu.addItem(ghostItem)
+
         let pauseItem = NSMenuItem(
             title: "Pause approvals",
             action: #selector(togglePauseApprovals(_:)),

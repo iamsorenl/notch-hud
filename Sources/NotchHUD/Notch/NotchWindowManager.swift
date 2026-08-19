@@ -19,6 +19,26 @@ final class NotchWindowManager {
 
     let panelPrefs = PanelPrefs()
 
+    /// Ghost mode: the resting pill is invisible so it never covers screen
+    /// content, but the hover region stays armed — hovering the notch area
+    /// still drops the panel. Persisted across launches.
+    private static let ghostDefaultsKey = "pillGhosted"
+    private(set) var isGhosted = UserDefaults.standard.bool(forKey: ghostDefaultsKey)
+
+    func setGhosted(_ ghosted: Bool) {
+        isGhosted = ghosted
+        UserDefaults.standard.set(ghosted, forKey: Self.ghostDefaultsKey)
+        applyGhostState()
+    }
+
+    /// The pill window must come back whenever the panel is expanded —
+    /// otherwise a ghosted notch would drop an invisible backdrop on hover.
+    private func applyGhostState() {
+        let alpha: CGFloat = (isGhosted && !isExpanded) ? 0 : 1
+        notchedHUD?.windowController?.window?.alphaValue = alpha
+        floatingPeek?.windowController?.window?.alphaValue = alpha
+    }
+
     func togglePanelPinned() {
         panelPrefs.pinned.toggle()
         if !panelPrefs.pinned, !containsExpandedContent(at: NSEvent.mouseLocation) {
@@ -128,6 +148,7 @@ final class NotchWindowManager {
                 NSLog("NotchHUD found no notched display; using a top-center floating pill.")
                 await self.installFloatingHUD(on: screen, generation: generation)
             }
+            self.applyGhostState()
 
             guard self.transitionGeneration == generation, !self.isExpanded else { return }
             self.closeOrphanedNotchWindows(keepingCurrent: true)
@@ -180,6 +201,7 @@ final class NotchWindowManager {
 
         isExpanded = true
         expansionReason = reason
+        applyGhostState()
         startWatchdog()
 
         transitionGeneration += 1
@@ -219,6 +241,7 @@ final class NotchWindowManager {
         HoverDiag.log("collapse(reason: \(reason.rawValue))")
         isExpanded = false
         expansionReason = nil
+        applyGhostState()
         watchdogTask?.cancel()
         watchdogTask = nil
         interactivePanel?.orderOut(nil)
