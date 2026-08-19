@@ -165,3 +165,30 @@ private func envelope(
         AgentProcess(pid: 200, tty: nil, command: "/usr/sbin/distnoted"),
     ])
 }
+
+// MARK: - Terminal program capture (click-to-focus routing)
+
+@Test func parseTermProgramExtractsValueFromPSEnvOutput() {
+    let output = "claude TERM=xterm-256color TERM_PROGRAM=Apple_Terminal TERM_PROGRAM_VERSION=470.2"
+    #expect(ProcessPoller.parseTermProgram(output) == "Apple_Terminal")
+    #expect(ProcessPoller.parseTermProgram("claude TERM=xterm-256color") == nil)
+    #expect(ProcessPoller.parseTermProgram("") == nil)
+}
+
+@MainActor @Test func pollWritesTermProgramFromLookupSoSessionsAreFocusable() throws {
+    let dir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+    try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+    defer { try? FileManager.default.removeItem(at: dir) }
+
+    let poller = ProcessPoller(
+        spoolURL: dir,
+        listProcesses: { [AgentProcess(pid: 42, tty: "/dev/ttys009", command: "claude")] },
+        lookupTermProgram: { pid in pid == 42 ? "Apple_Terminal" : nil }
+    )
+    poller.start()
+    poller.stop()
+
+    let data = try Data(contentsOf: dir.appendingPathComponent("poller-42.json"))
+    let decoded = try JSONDecoder().decode(SessionEnvelope.self, from: data)
+    #expect(decoded.terminal?.termProgram == "Apple_Terminal")
+}

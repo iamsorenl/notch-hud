@@ -28,16 +28,19 @@ final class ProcessPoller {
     private let spoolURL: URL
     private let fileManager: FileManager
     private let listProcesses: () -> [AgentProcess]
+    private let lookupTermProgram: (Int) -> String?
     private var timer: Timer?
 
     init(
         spoolURL: URL,
         fileManager: FileManager = .default,
-        listProcesses: @escaping () -> [AgentProcess] = ProcessPoller.listRunningProcesses
+        listProcesses: @escaping () -> [AgentProcess] = ProcessPoller.listRunningProcesses,
+        lookupTermProgram: @escaping (Int) -> String? = ProcessPoller.termProgram(forPID:)
     ) {
         self.spoolURL = spoolURL
         self.fileManager = fileManager
         self.listProcesses = listProcesses
+        self.lookupTermProgram = lookupTermProgram
     }
 
     func start() {
@@ -113,6 +116,36 @@ final class ProcessPoller {
         return (candidates, removeIDs)
     }
 
+    /// Extracts TERM_PROGRAM from `ps eww` output (environment appended to the
+    /// command line). Focus strategies route on this, so a session without it
+    /// cannot be raised by click-to-focus.
+    nonisolated static func parseTermProgram(_ output: String) -> String? {
+        for token in output.split(separator: " ") where token.hasPrefix("TERM_PROGRAM=") {
+            let value = token.dropFirst("TERM_PROGRAM=".count)
+            return value.isEmpty ? nil : String(value)
+        }
+        return nil
+    }
+
+    nonisolated static func termProgram(forPID pid: Int) -> String? {
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/bin/ps")
+        process.arguments = ["eww", "-o", "command=", "-p", "\(pid)"]
+        let pipe = Pipe()
+        process.standardOutput = pipe
+        process.standardError = FileHandle.nullDevice
+
+        do {
+            try process.run()
+            process.waitUntilExit()
+            let data = pipe.fileHandleForReading.readDataToEndOfFile()
+            guard let output = String(data: data, encoding: .utf8) else { return nil }
+            return parseTermProgram(output)
+        } catch {
+            return nil
+        }
+    }
+
     nonisolated static func parsePSOutput(_ output: String) -> [AgentProcess] {
         output.split(separator: "\n").compactMap { line in
             let fields = line.split(separator: " ", omittingEmptySubsequences: true)
@@ -155,7 +188,8 @@ final class ProcessPoller {
                 started: existing?.started ?? updated,
                 seq: (existing?.seq ?? 0) + 1,
                 terminal: TerminalIdentity(
-                    termProgram: nil,
+                    termProgram: existing?.terminal?.termProgram
+                        ?? lookupTermProgram(candidate.pid),
                     tty: candidate.tty,
                     itermSessionId: nil,
                     weztermPane: nil,
