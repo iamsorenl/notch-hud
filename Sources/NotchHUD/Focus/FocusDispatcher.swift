@@ -6,6 +6,7 @@ final class FocusDispatcher {
 
     init(strategies: [any FocusStrategy] = [
         TerminalAppStrategy(),
+        VSCodeStrategy(),
         ITerm2Strategy(),
         WezTermStrategy(),
         KittyStrategy()

@@ -39,8 +39,6 @@ final class NotchWindowManager {
     private var selectedScreen: NSScreen?
     private var notchedHUD: NotchedHUD?
     private var floatingPeek: FloatingPeek?
-    private var floatingPeekSnapObservers: [NSObjectProtocol] = []
-    private var floatingPeekScreenFrame: NSRect?
     private var interactivePanel: InteractiveNotchPanel?
     private var panelHostingView: NSHostingView<NotchPanelView>?
     private var transitionTask: Task<Void, Never>?
@@ -274,48 +272,6 @@ final class NotchWindowManager {
         await peek.expand(on: screen)
         guard transitionGeneration == generation, !isExpanded else { return }
         configurePassThroughWindow(peek.windowController?.window)
-        floatingPeekScreenFrame = screen.frame
-        snapFloatingPeekFlushToTop()
-        observeFloatingPeekFrameChanges()
-    }
-
-    /// DynamicNotchKit's floating style leaves a gap below the menu bar, which
-    /// reads as a lost window on notchless displays. Snap the pill flush to the
-    /// screen's top edge, centered — the same strip the hover fallback rect
-    /// already covers, so pointer tracking and the visible pill agree.
-    private func snapFloatingPeekFlushToTop() {
-        guard let window = floatingPeek?.windowController?.window,
-              let screenFrame = floatingPeekScreenFrame else { return }
-        let origin = NSPoint(
-            x: screenFrame.midX - window.frame.width / 2,
-            y: screenFrame.maxY - window.frame.height
-        )
-        if window.frame.origin != origin {
-            window.setFrameOrigin(origin)
-        }
-    }
-
-    private func observeFloatingPeekFrameChanges() {
-        removeFloatingPeekSnapObservers()
-        guard let window = floatingPeek?.windowController?.window else { return }
-
-        for name in [NSWindow.didResizeNotification, NSWindow.didMoveNotification] {
-            let observer = NotificationCenter.default.addObserver(
-                forName: name, object: window, queue: .main
-            ) { [weak self] _ in
-                Task { @MainActor [weak self] in
-                    self?.snapFloatingPeekFlushToTop()
-                }
-            }
-            floatingPeekSnapObservers.append(observer)
-        }
-    }
-
-    private func removeFloatingPeekSnapObservers() {
-        for observer in floatingPeekSnapObservers {
-            NotificationCenter.default.removeObserver(observer)
-        }
-        floatingPeekSnapObservers = []
     }
 
     private func installInteractivePanel() {
@@ -542,7 +498,6 @@ final class NotchWindowManager {
 
     private func clearNotches() {
         removeInteractivePanel()
-        removeFloatingPeekSnapObservers()
         notchedHUD = nil
         floatingPeek = nil
     }

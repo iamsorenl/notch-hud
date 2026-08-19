@@ -29,17 +29,30 @@ struct NotchlessView<Expanded, CompactLeading, CompactTrailing>: View where Expa
             .background {
                 VisualEffectView(material: .popover, blendingMode: .behindWindow)
                     .overlay {
-                        RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                            .strokeBorder(.quaternary, lineWidth: 1)
+                        // NotchHUD patch: squared top corners — the pill sits flush
+                        // against the screen's top edge like a hardware notch.
+                        UnevenRoundedRectangle(
+                            bottomLeadingRadius: cornerRadius,
+                            bottomTrailingRadius: cornerRadius,
+                            style: .continuous
+                        )
+                        .strokeBorder(.quaternary, lineWidth: 1)
                     }
             }
-            .clipShape(.rect(cornerRadius: cornerRadius))
+            .clipShape(.rect(
+                bottomLeadingRadius: cornerRadius,
+                bottomTrailingRadius: cornerRadius,
+                style: .continuous
+            ))
             .padding(20)
             .onGeometryChange(for: CGFloat.self, of: \.size.height) { newHeight in
                 // This makes sure that the floating window FULLY slides off before disappearing
                 windowHeight = newHeight
             }
-            .offset(y: dynamicNotch.state == .expanded ? dynamicNotch.notchSize.height : -windowHeight)
+            // NotchHUD patch: when expanded, cancel the internal padding so the
+            // pill hugs the top of the screen instead of floating below the
+            // menu bar with a gap (original: offset notchSize.height).
+            .offset(y: dynamicNotch.state == .expanded ? -20 : -windowHeight)
             .onHover(perform: dynamicNotch.updateHoverState)
     }
 
