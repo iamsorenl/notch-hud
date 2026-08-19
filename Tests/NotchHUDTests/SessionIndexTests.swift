@@ -77,11 +77,19 @@ private func recent(
 @Test func resumeCommandChangesDirectoryAndResumes() {
     let session = recent(id: "abc-123", lastActive: Date())
     let command = ResumeLauncher.command(for: session, directoryExists: { _ in true })
-    #expect(command == "cd '/Users/x/demo' && claude --resume abc-123")
+    #expect(command == "cd '/Users/x/demo' && claude --resume 'abc-123'")
 }
 
 @Test func resumeCommandFallsBackToHomeWhenCwdIsGone() {
     let session = recent(id: "abc-123", lastActive: Date())
     let command = ResumeLauncher.command(for: session, directoryExists: { _ in false })
-    #expect(command == "cd \"$HOME\" && claude --resume abc-123")
+    #expect(command == "cd \"$HOME\" && claude --resume 'abc-123'")
+}
+
+@Test func resumeCommandRejectsShellMetacharactersInSessionID() {
+    let hostile = recent(id: "x'; rm -rf ~; echo '", lastActive: Date())
+    #expect(ResumeLauncher.command(for: hostile, directoryExists: { _ in true }) == nil)
+    #expect(!ResumeLauncher.isValidSessionID("a b"))
+    #expect(!ResumeLauncher.isValidSessionID(""))
+    #expect(ResumeLauncher.isValidSessionID("0c68dd8b-ed0e-4a65-8702-55d1d3b9dd3c"))
 }

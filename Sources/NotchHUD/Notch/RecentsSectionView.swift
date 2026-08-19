@@ -118,10 +118,9 @@ struct RecentsSectionView: View {
         do {
             try ResumeLauncher.resume(session)
         } catch {
+            guard let command = ResumeLauncher.command(for: session) else { return }
             NSPasteboard.general.clearContents()
-            NSPasteboard.general.setString(
-                ResumeLauncher.command(for: session), forType: .string
-            )
+            NSPasteboard.general.setString(command, forType: .string)
             let value: Feedback = if case FocusError.permissionDenied = error {
                 .permissionDenied
             } else {

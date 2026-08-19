@@ -101,6 +101,7 @@ struct SessionIndex: Sendable {
             .prefix(Self.scanLimit)
             .compactMap { candidate -> RecentSession? in
                 let id = candidate.url.deletingPathExtension().lastPathComponent
+                guard ResumeLauncher.isValidSessionID(id) else { return nil }
                 let meta = Self.parseHead(Self.readHeadLines(of: candidate.url))
                 let cwd = meta.cwd ?? candidate.url.deletingLastPathComponent().lastPathComponent
                 let projectName = (cwd as NSString).lastPathComponent
