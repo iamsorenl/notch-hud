@@ -10,6 +10,22 @@ final class NotchWindowManager {
         case manual
     }
 
+    /// Panel-level state SwiftUI needs to observe (pin keeps the expanded
+    /// panel open across hover exits until the user unpins).
+    @Observable
+    final class PanelPrefs {
+        var pinned = false
+    }
+
+    let panelPrefs = PanelPrefs()
+
+    func togglePanelPinned() {
+        panelPrefs.pinned.toggle()
+        if !panelPrefs.pinned, !containsExpandedContent(at: NSEvent.mouseLocation) {
+            collapse(reason: .manual)
+        }
+    }
+
     private typealias NotchedHUD = DynamicNotch<EmptyView, NotchPeekView, NotchPeekTrailingView>
     private typealias FloatingPeek = DynamicNotch<NotchFloatingPeekView, EmptyView, EmptyView>
 
@@ -271,6 +287,10 @@ final class NotchWindowManager {
             usageProvider: usageProvider,
             focusDispatcher: focusDispatcher,
             decisionWriter: decisionWriter,
+            panelPrefs: panelPrefs,
+            onTogglePin: { [weak self] in
+                self?.togglePanelPinned()
+            },
             onApprovalDismiss: { [weak self] sessionID in
                 self?.approvalDidResolve(sessionID: sessionID)
             },
@@ -489,6 +509,7 @@ extension NotchWindowManager: HoverControllerDelegate {
     }
 
     func hoverControllerDidExit(_ controller: HoverController) {
+        guard !panelPrefs.pinned else { return }
         collapse(reason: .hover)
     }
 

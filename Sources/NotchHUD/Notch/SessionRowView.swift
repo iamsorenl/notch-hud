@@ -43,7 +43,6 @@ struct SessionRowView: View {
                     .foregroundStyle(.white.opacity(0.45))
             }
         }
-        .opacity(canFocus ? 1 : 0.55)
     }
 
     private var cardContent: some View {
@@ -71,6 +70,7 @@ struct SessionRowView: View {
 
             trailingMetadata
         }
+        .opacity(canFocus ? 1 : 0.55)
         .padding(.horizontal, 10)
         .padding(.vertical, 10)
         .frame(maxWidth: .infinity, alignment: .leading)

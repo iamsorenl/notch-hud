@@ -7,6 +7,8 @@ struct NotchPanelView: View {
     let usageProvider: UsageProvider
     let focusDispatcher: FocusDispatcher
     let decisionWriter: ApprovalDecisionWriter
+    let panelPrefs: NotchWindowManager.PanelPrefs
+    let onTogglePin: @MainActor () -> Void
     let onApprovalDismiss: @MainActor (String) -> Void
     let onSizeChange: @MainActor (CGSize) -> Void
 
@@ -128,10 +130,35 @@ struct NotchPanelView: View {
                 .accessibilityLabel("Claude usage")
             }
 
-            Image(systemName: "gearshape")
-                .font(.system(size: 12, weight: .medium))
-                .foregroundStyle(.white.opacity(0.5))
-                .accessibilityLabel("Settings")
+            Button {
+                onTogglePin()
+            } label: {
+                Image(systemName: panelPrefs.pinned ? "pin.fill" : "pin")
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundStyle(
+                        panelPrefs.pinned
+                            ? DisplayStatus.needsMe.color
+                            : .white.opacity(0.5)
+                    )
+            }
+            .buttonStyle(.plain)
+            .padding(.trailing, 10)
+            .help(panelPrefs.pinned ? "Unpin panel" : "Keep panel open")
+            .accessibilityLabel(panelPrefs.pinned ? "Unpin panel" : "Pin panel open")
+
+            Menu {
+                Button("Automation Settings…") { openAutomationSettings() }
+                Divider()
+                Button("Quit NotchHUD") { NSApp.terminate(nil) }
+            } label: {
+                Image(systemName: "gearshape")
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundStyle(.white.opacity(0.5))
+            }
+            .menuStyle(.borderlessButton)
+            .menuIndicator(.hidden)
+            .fixedSize()
+            .accessibilityLabel("Settings")
         }
         .font(.system(size: 11, weight: .medium, design: .monospaced))
     }
