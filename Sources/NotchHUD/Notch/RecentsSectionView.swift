@@ -20,7 +20,7 @@ struct RecentsSectionView: View {
         case copied
     }
 
-    private static let rowLimit = 8
+    private static let rowLimit = 20
     private static let inlineChipLimit = 3
 
     private var projects: [String] {
@@ -38,8 +38,16 @@ struct RecentsSectionView: View {
     }
 
     var body: some View {
-        if !recents.isEmpty {
-            VStack(alignment: .leading, spacing: 6) {
+        // The scan trigger must live OUTSIDE any emptiness check: gating the
+        // whole body on `!recents.isEmpty` would unmount the trigger and the
+        // list could never populate.
+        VStack(alignment: .leading, spacing: 6) {
+            if recents.isEmpty {
+                Text("No recent sessions")
+                    .font(.system(size: 11, design: .monospaced))
+                    .foregroundStyle(.white.opacity(0.4))
+                    .frame(maxWidth: .infinity, minHeight: 44, alignment: .center)
+            } else {
                 filterChips
                 ForEach(visibleRecents) { session in
                     RecentSessionRowView(
@@ -50,12 +58,12 @@ struct RecentsSectionView: View {
                     )
                 }
             }
-            .onChange(of: liveSessionIDs, initial: true) { _, live in
-                recents = index.scan(liveSessionIDs: live)
-            }
-            .onDisappear {
-                selectedProject = nil
-            }
+        }
+        .onChange(of: liveSessionIDs, initial: true) { _, live in
+            recents = index.scan(liveSessionIDs: live)
+        }
+        .onDisappear {
+            selectedProject = nil
         }
     }
 

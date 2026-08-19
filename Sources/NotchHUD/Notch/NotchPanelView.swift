@@ -14,6 +14,13 @@ struct NotchPanelView: View {
 
     @State private var feedback: [String: SessionRowFeedback] = [:]
     @State private var sessionListHeight: CGFloat?
+    @State private var recentsListHeight: CGFloat?
+    @State private var panelTab: PanelTab = .live
+
+    enum PanelTab {
+        case live
+        case resume
+    }
 
     private let sessionIndex = SessionIndex()
 
@@ -44,16 +51,37 @@ struct NotchPanelView: View {
                 )
             }
 
+            tabStrip
+
             TimelineView(.periodic(from: .now, by: 30)) { context in
-                if store.sessions.isEmpty {
-                    VStack(spacing: 6) {
-                        emptyState
+                if panelTab == .resume {
+                    ScrollView(.vertical) {
                         RecentsSectionView(
                             index: sessionIndex,
                             liveSessionIDs: Set(store.sessions.map(\.id)),
                             onGrantAccess: openAutomationSettings
                         )
+                        .frame(maxWidth: .infinity)
+                        .background {
+                            GeometryReader { proxy in
+                                Color.clear
+                                    .onAppear {
+                                        recentsListHeight = proxy.size.height
+                                    }
+                                    .onChange(of: proxy.size.height) { _, height in
+                                        recentsListHeight = height
+                                    }
+                            }
+                        }
                     }
+                    .frame(
+                        height: min(
+                            recentsListHeight ?? maximumSessionListHeight,
+                            maximumSessionListHeight
+                        )
+                    )
+                } else if store.sessions.isEmpty {
+                    emptyState
                 } else {
                     ScrollView(.vertical) {
                         VStack(spacing: 6) {
@@ -66,12 +94,6 @@ struct NotchPanelView: View {
                                     onGrantAccess: openAutomationSettings
                                 )
                             }
-                            RecentsSectionView(
-                                index: sessionIndex,
-                                liveSessionIDs: Set(store.sessions.map(\.id)),
-                                onGrantAccess: openAutomationSettings
-                            )
-                            .padding(.top, 4)
                         }
                         .frame(maxWidth: .infinity)
                         .background {
@@ -176,6 +198,30 @@ struct NotchPanelView: View {
             .accessibilityLabel("Settings")
         }
         .font(.system(size: 11, weight: .medium, design: .monospaced))
+    }
+
+    private var tabStrip: some View {
+        HStack(spacing: 4) {
+            tabButton("live", tab: .live)
+            tabButton("resume", tab: .resume)
+            Spacer()
+        }
+    }
+
+    private func tabButton(_ label: String, tab: PanelTab) -> some View {
+        Button {
+            panelTab = tab
+        } label: {
+            Text(label)
+                .font(.system(size: 11, weight: .medium, design: .monospaced))
+                .foregroundStyle(.white.opacity(panelTab == tab ? 0.92 : 0.45))
+                .padding(.horizontal, 9)
+                .padding(.vertical, 4)
+                .background(.white.opacity(panelTab == tab ? 0.1 : 0))
+                .clipShape(.rect(cornerRadius: 7))
+                .contentShape(.rect)
+        }
+        .buttonStyle(.plain)
     }
 
     private func summaryPart(_ count: Int, _ label: String, color: Color) -> some View {
