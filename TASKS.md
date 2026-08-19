@@ -54,9 +54,9 @@ North star = Vibe Island (vibeisland.app, @edwardluox). References: `assets/refe
 - [ ] **GATE M4:** real permission prompt pops the card; Allow Once runs the tool; Deny blocks; timeout falls back; kill -9 demotes ≤90s
 
 ## M5 — Codex adapter + generic poller + usage meters
-- [ ] `notch-codex-notify` chain-exec wrapper (turn-end → done, SkyComputerUseClient preserved)
-- [ ] `ProcessPoller` (agent regex, source-rank protected, skip ttyless workers)
-- [ ] Claude usage meters (5h/7d) in header if a clean local source exists (probe `claude usage` / OAuth)
+- [x] `notch-codex-notify` chain-exec wrapper (turn-end → done, SkyComputerUseClient preserved) — installed to `~/.notch-hud/bin`, prepended to `notify` in `~/.codex/config.toml` (timestamped backup; SkyComputerUseClient chain-exec target preserved with its args); fail-open (all errors exit 0); verified end-to-end with a representative payload
+- [x] `ProcessPoller` (agent regex, source-rank protected, skip ttyless workers) — 5s `ps` poll, claude/codex/aider/goose/gemini/amp regex, poller envelopes (`source: process-poller`) always lose to hook sessions on the same tty, cleared on process exit; 11 tests
+- [x] Claude usage meters (5h/7d) in header if a clean local source exists (probe `claude usage` / OAuth) — PROBED 2026-08-18: no clean source (no `claude usage` subcommand; `~/.claude/stats-cache.json` stale lifetime stats only; no OAuth usage cache). `UsageProvider` polls `~/.claude/usage.json` every 60s and the header renders nothing until it exists — meters cleanly absent, no invented numbers; 6 parsing tests
 - [ ] **GATE M5:** Codex working→done with computer-use intact; non-hooked agent appears/clears; meters real or cleanly absent
 
 ## M6 — Design polish + productize

@@ -22,6 +22,8 @@ private final class AppDelegate: NSObject, NSApplicationDelegate {
     private var spoolWatcher: SpoolWatcher?
     private var pendingWatcher: PendingWatcher?
     private var stalenessSweeper: StalenessSweeper?
+    private var processPoller: ProcessPoller?
+    private var usageProvider: UsageProvider?
     private var windowManager: NotchWindowManager?
     private var statusItem: NSStatusItem?
 
@@ -39,10 +41,13 @@ private final class AppDelegate: NSObject, NSApplicationDelegate {
             workingStaleSeconds: environment.workingStaleSeconds,
             dropSeconds: environment.dropSeconds
         )
+        let processPoller = ProcessPoller(spoolURL: environment.spoolURL)
+        let usageProvider = UsageProvider()
         let windowManager = NotchWindowManager(
             environment: environment,
             store: sessionStore,
             pendingStore: pendingStore,
+            usageProvider: usageProvider,
             focusDispatcher: focusDispatcher
         )
         let pendingWatcher = PendingWatcher(pendingURL: environment.pendingURL) {
@@ -56,11 +61,15 @@ private final class AppDelegate: NSObject, NSApplicationDelegate {
         self.spoolWatcher = spoolWatcher
         self.pendingWatcher = pendingWatcher
         self.stalenessSweeper = stalenessSweeper
+        self.processPoller = processPoller
+        self.usageProvider = usageProvider
         self.windowManager = windowManager
 
         spoolWatcher.start()
         pendingWatcher.start()
         stalenessSweeper.start()
+        processPoller.start()
+        usageProvider.start()
         windowManager.boot()
         installStatusItem()
 
@@ -74,6 +83,8 @@ private final class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationWillTerminate(_ notification: Notification) {
         windowManager?.shutdown()
+        usageProvider?.stop()
+        processPoller?.stop()
         stalenessSweeper?.stop()
         pendingWatcher?.stop()
         spoolWatcher?.stop()

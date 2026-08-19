@@ -16,11 +16,11 @@ for d in bin sessions seq pending decisions session-allow; do
 done
 echo "dirs ready under $notch_home"
 
-for f in notch-emit notch-claude-hook notch-approve; do
+for f in notch-emit notch-claude-hook notch-approve notch-codex-notify; do
     cp "$script_dir/$f" "$notch_home/bin/$f"
     chmod +x "$notch_home/bin/$f"
 done
-echo "installed notch-emit notch-claude-hook notch-approve to $notch_home/bin (notch-approve not registered)"
+echo "installed notch-emit notch-claude-hook notch-approve notch-codex-notify to $notch_home/bin (notch-approve not registered; notch-codex-notify wired via ~/.codex/config.toml notify)"
 
 hook_cmd="$notch_home/bin/notch-claude-hook"
 NOTCH_HOOK_CMD="$hook_cmd" SETTINGS="$settings" python3 - <<'PY'

@@ -16,6 +16,7 @@ final class NotchWindowManager {
     private let environment: AppEnvironment
     private let store: SessionStore
     private let pendingStore: PendingStore
+    private let usageProvider: UsageProvider
     private let focusDispatcher: FocusDispatcher
     private let decisionWriter: ApprovalDecisionWriter
     private var hoverController: HoverController?
@@ -38,11 +39,13 @@ final class NotchWindowManager {
         environment: AppEnvironment,
         store: SessionStore,
         pendingStore: PendingStore,
+        usageProvider: UsageProvider,
         focusDispatcher: FocusDispatcher
     ) {
         self.environment = environment
         self.store = store
         self.pendingStore = pendingStore
+        self.usageProvider = usageProvider
         self.focusDispatcher = focusDispatcher
         decisionWriter = ApprovalDecisionWriter(
             decisionsURL: environment.decisionsURL,
@@ -265,6 +268,7 @@ final class NotchWindowManager {
         let rootView = NotchPanelView(
             store: store,
             pendingStore: pendingStore,
+            usageProvider: usageProvider,
             focusDispatcher: focusDispatcher,
             decisionWriter: decisionWriter,
             onApprovalDismiss: { [weak self] sessionID in

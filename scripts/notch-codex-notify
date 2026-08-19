@@ -1,0 +1,54 @@
+#!/bin/sh
+# Codex CLI notify adapter for NotchHUD.
+#
+# Wire it in ~/.codex/config.toml by prepending it to any existing notify:
+#   notify = ["/Users/you/.notch-hud/bin/notch-codex-notify", <previous notify program + its args...>]
+# Codex appends one JSON payload as the final argument. On turn end this
+# emits status "done" for the session via the sibling notch-emit, then
+# chain-execs the previous notify program with its original args (payload
+# included), so existing behavior is preserved.
+#
+# Fail-open: any error exits 0; this must never break the user's Codex.
+
+# Last argument is the JSON payload from Codex.
+json=
+for arg; do json=$arg; done
+
+# Emit in a function so `set --` here cannot clobber the chain args.
+emit_done() {
+    command -v jq >/dev/null 2>&1 || return 0
+    [ -n "$1" ] || return 0
+    type=$(printf '%s' "$1" | jq -r '.type // empty' 2>/dev/null)
+    [ "$type" = "agent-turn-complete" ] || return 0
+
+    script_dir=$(CDPATH= cd -P "$(dirname "$0")" 2>/dev/null && pwd)
+    emitter=$script_dir/notch-emit
+    [ -x "$emitter" ] || return 0
+
+    # Codex payloads historically carry only turn-id (per turn, not per
+    # session); prefer a session-scoped id if present, else the codex pid.
+    id=$(printf '%s' "$1" | jq -r '."session-id" // ."thread-id" // ."conversation-id" // empty' 2>/dev/null)
+    [ -n "$id" ] || id=$PPID
+    detail=$(printf '%s' "$1" | jq -r '."last-assistant-message" // empty' 2>/dev/null | tr '\r\n' '  ' | cut -c 1-80)
+    cwd=$(printf '%s' "$1" | jq -r '.cwd // empty' 2>/dev/null)
+
+    set -- --pid "$PPID"
+    if [ -n "$cwd" ]; then
+        set -- "$@" --cwd "$cwd" --project "$(basename "$cwd" 2>/dev/null)"
+    fi
+    if [ -n "$detail" ]; then
+        set -- "$@" --detail "$detail"
+    fi
+    "$emitter" "codex-$id" codex done "$@" >/dev/null 2>&1
+    return 0
+}
+
+emit_done "$json"
+
+# Chain-exec the previously configured notify program, if any.
+# "$@" is: chain program, its args, then the JSON payload — same shape the
+# program received before this wrapper existed.
+if [ "$#" -ge 2 ] && [ -x "$1" ]; then
+    exec "$@"
+fi
+exit 0

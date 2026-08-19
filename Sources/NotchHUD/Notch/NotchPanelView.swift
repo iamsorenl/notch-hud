@@ -4,6 +4,7 @@ import SwiftUI
 struct NotchPanelView: View {
     let store: SessionStore
     let pendingStore: PendingStore
+    let usageProvider: UsageProvider
     let focusDispatcher: FocusDispatcher
     let decisionWriter: ApprovalDecisionWriter
     let onApprovalDismiss: @MainActor (String) -> Void
@@ -118,6 +119,15 @@ struct NotchPanelView: View {
 
             Spacer()
 
+            if let usage = usageProvider.snapshot {
+                HStack(spacing: 10) {
+                    usageMeter("5h", usage.fiveHourPercent)
+                    usageMeter("7d", usage.sevenDayPercent)
+                }
+                .padding(.trailing, 10)
+                .accessibilityLabel("Claude usage")
+            }
+
             Image(systemName: "gearshape")
                 .font(.system(size: 12, weight: .medium))
                 .foregroundStyle(.white.opacity(0.5))
@@ -133,6 +143,31 @@ struct NotchPanelView: View {
                 .monospacedDigit()
             Text(label)
                 .foregroundStyle(.white.opacity(0.58))
+        }
+    }
+
+    @ViewBuilder
+    private func usageMeter(_ label: String, _ percent: Int?) -> some View {
+        if let percent {
+            HStack(spacing: 4) {
+                Text(label)
+                    .foregroundStyle(.white.opacity(0.4))
+                Capsule()
+                    .fill(.white.opacity(0.14))
+                    .frame(width: 28, height: 3)
+                    .overlay(alignment: .leading) {
+                        Capsule()
+                            .fill(
+                                percent >= 90
+                                    ? DisplayStatus.needsMe.color
+                                    : Color.white.opacity(0.6)
+                            )
+                            .frame(width: 28 * CGFloat(percent) / 100)
+                    }
+                Text("\(percent)%")
+                    .foregroundStyle(.white.opacity(0.58))
+                    .monospacedDigit()
+            }
         }
     }
 
