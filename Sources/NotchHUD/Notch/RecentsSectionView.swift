@@ -12,6 +12,8 @@ struct RecentsSectionView: View {
     let onGrantAccess: () -> Void
 
     @State private var recents: [RecentSession] = []
+    @State private var hasMore = false
+    @State private var scanLimit = SessionIndex.pageSize
     @State private var selectedProject: String?
     @State private var feedback: [String: Feedback] = [:]
 
@@ -20,7 +22,6 @@ struct RecentsSectionView: View {
         case copied
     }
 
-    private static let rowLimit = 20
     private static let inlineChipLimit = 3
 
     private var projects: [String] {
@@ -31,10 +32,9 @@ struct RecentsSectionView: View {
     }
 
     private var visibleRecents: [RecentSession] {
-        let filtered = selectedProject.map { project in
+        selectedProject.map { project in
             recents.filter { $0.projectName == project }
         } ?? recents
-        return Array(filtered.prefix(Self.rowLimit))
     }
 
     var body: some View {
@@ -57,10 +57,25 @@ struct RecentsSectionView: View {
                         onGrantAccess: onGrantAccess
                     )
                 }
+                if hasMore {
+                    Button {
+                        scanLimit += SessionIndex.pageSize
+                        rescan()
+                    } label: {
+                        Text("Load more")
+                            .font(.system(size: 10, weight: .medium, design: .monospaced))
+                            .foregroundStyle(.white.opacity(0.55))
+                            .frame(maxWidth: .infinity, minHeight: 26)
+                            .background(.white.opacity(0.04))
+                            .clipShape(.rect(cornerRadius: 9))
+                            .contentShape(.rect)
+                    }
+                    .buttonStyle(.plain)
+                }
             }
         }
-        .onChange(of: liveSessionIDs, initial: true) { _, live in
-            recents = index.scan(liveSessionIDs: live)
+        .onChange(of: liveSessionIDs, initial: true) { _, _ in
+            rescan()
         }
         .onDisappear {
             selectedProject = nil
@@ -119,6 +134,10 @@ struct RecentsSectionView: View {
             .padding(.vertical, 3)
             .background(.white.opacity(isSelected ? 0.14 : 0.05))
             .clipShape(.capsule)
+    }
+
+    private func rescan() {
+        (recents, hasMore) = index.scan(liveSessionIDs: liveSessionIDs, limit: scanLimit)
     }
 
     private func resume(_ session: RecentSession) {

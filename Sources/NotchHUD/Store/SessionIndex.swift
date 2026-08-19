@@ -21,8 +21,8 @@ struct SessionIndex: Sendable {
         var cwd: String?
     }
 
-    /// Newest transcripts to consider; views cap what they display.
-    static let scanLimit = 40
+    /// Newest transcripts per page; the view raises the limit via Load more.
+    static let pageSize = 40
     private static let headByteLimit = 64 * 1024
     private static let headLineLimit = 200
 
@@ -74,12 +74,15 @@ struct SessionIndex: Sendable {
 
     // MARK: - Scanning
 
-    func scan(liveSessionIDs: Set<String>) -> [RecentSession] {
+    func scan(
+        liveSessionIDs: Set<String>,
+        limit: Int = SessionIndex.pageSize
+    ) -> (sessions: [RecentSession], hasMore: Bool) {
         let fileManager = FileManager.default
         guard let projectDirs = try? fileManager.contentsOfDirectory(
             at: rootURL, includingPropertiesForKeys: nil, options: [.skipsHiddenFiles]
         ) else {
-            return []
+            return ([], false)
         }
 
         var candidates: [(url: URL, mtime: Date)] = []
@@ -98,7 +101,7 @@ struct SessionIndex: Sendable {
 
         let sessions = candidates
             .sorted { $0.mtime > $1.mtime }
-            .prefix(Self.scanLimit)
+            .prefix(limit)
             .compactMap { candidate -> RecentSession? in
                 let id = candidate.url.deletingPathExtension().lastPathComponent
                 guard ResumeLauncher.isValidSessionID(id) else { return nil }
@@ -114,7 +117,10 @@ struct SessionIndex: Sendable {
                 )
             }
 
-        return Self.plan(candidates: sessions, liveSessionIDs: liveSessionIDs, limit: Self.scanLimit)
+        return (
+            Self.plan(candidates: sessions, liveSessionIDs: liveSessionIDs, limit: limit),
+            candidates.count > limit
+        )
     }
 
     private static func readHeadLines(of url: URL) -> [String] {
