@@ -11,10 +11,12 @@ final class NotchWindowManager {
     }
 
     /// Panel-level state SwiftUI needs to observe (pin keeps the expanded
-    /// panel open across hover exits until the user unpins).
+    /// panel open across hover exits until the user unpins; ghosted hides the
+    /// resting pill while leaving hover armed).
     @Observable
     final class PanelPrefs {
         var pinned = false
+        var ghosted = UserDefaults.standard.bool(forKey: NotchWindowManager.ghostDefaultsKey)
     }
 
     let panelPrefs = PanelPrefs()
@@ -22,11 +24,11 @@ final class NotchWindowManager {
     /// Ghost mode: the resting pill is invisible so it never covers screen
     /// content, but the hover region stays armed — hovering the notch area
     /// still drops the panel. Persisted across launches.
-    private static let ghostDefaultsKey = "pillGhosted"
-    private(set) var isGhosted = UserDefaults.standard.bool(forKey: ghostDefaultsKey)
+    static let ghostDefaultsKey = "pillGhosted"
+    var isGhosted: Bool { panelPrefs.ghosted }
 
     func setGhosted(_ ghosted: Bool) {
-        isGhosted = ghosted
+        panelPrefs.ghosted = ghosted
         UserDefaults.standard.set(ghosted, forKey: Self.ghostDefaultsKey)
         applyGhostState()
     }
@@ -333,6 +335,10 @@ final class NotchWindowManager {
             panelPrefs: panelPrefs,
             onTogglePin: { [weak self] in
                 self?.togglePanelPinned()
+            },
+            onToggleGhost: { [weak self] in
+                guard let self else { return }
+                self.setGhosted(!self.isGhosted)
             },
             onApprovalDismiss: { [weak self] sessionID in
                 self?.approvalDidResolve(sessionID: sessionID)

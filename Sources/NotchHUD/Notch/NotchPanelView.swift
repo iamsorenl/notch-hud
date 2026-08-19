@@ -9,6 +9,7 @@ struct NotchPanelView: View {
     let decisionWriter: ApprovalDecisionWriter
     let panelPrefs: NotchWindowManager.PanelPrefs
     let onTogglePin: @MainActor () -> Void
+    let onToggleGhost: @MainActor () -> Void
     let onApprovalDismiss: @MainActor (String) -> Void
     let onSizeChange: @MainActor (CGSize) -> Void
 
@@ -186,6 +187,13 @@ struct NotchPanelView: View {
             .accessibilityLabel(panelPrefs.pinned ? "Unpin panel" : "Pin panel open")
 
             Menu {
+                Toggle(
+                    "Hide notch (hover still works)",
+                    isOn: Binding(
+                        get: { panelPrefs.ghosted },
+                        set: { _ in onToggleGhost() }
+                    )
+                )
                 Button("Automation Settings…") { openAutomationSettings() }
                 Divider()
                 Button("Quit NotchHUD") { NSApp.terminate(nil) }
