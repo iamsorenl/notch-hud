@@ -107,6 +107,7 @@ final class NotchWindowManager {
             guard self.transitionGeneration == generation else { return }
 
             self.clearNotches()
+            self.closeOrphanedNotchWindows()
             if screen.safeAreaInsets.top > 0 {
                 await self.installNotchedHUD(on: screen, generation: generation)
             } else {
@@ -500,6 +501,21 @@ final class NotchWindowManager {
         removeInteractivePanel()
         notchedHUD = nil
         floatingPeek = nil
+    }
+
+    /// Lid transitions fire several screen-change notifications in a burst;
+    /// a repin task cancelled mid-hide can orphan a HUD window after its
+    /// reference was dropped — seen as a black notch "ghost" on the external
+    /// display. This runs right after clearNotches(), when every legitimate
+    /// reference is nil, so any DynamicNotchKit panel still alive is a ghost:
+    /// close it outright, no animation. The last repin in a burst always runs
+    /// to completion, so the final state is clean even if earlier sweeps were
+    /// themselves cancelled.
+    private func closeOrphanedNotchWindows() {
+        for window in NSApp.windows
+        where String(describing: type(of: window)) == "DynamicNotchPanel" {
+            window.close()
+        }
     }
 }
 
