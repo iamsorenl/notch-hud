@@ -15,6 +15,8 @@ struct NotchPanelView: View {
     @State private var feedback: [String: SessionRowFeedback] = [:]
     @State private var sessionListHeight: CGFloat?
 
+    private let sessionIndex = SessionIndex()
+
     private let maximumPanelHeight: CGFloat = 520
     private var maximumSessionListHeight: CGFloat {
         pendingStore.hasPending ? 205 : 468
@@ -44,7 +46,14 @@ struct NotchPanelView: View {
 
             TimelineView(.periodic(from: .now, by: 30)) { context in
                 if store.sessions.isEmpty {
-                    emptyState
+                    VStack(spacing: 6) {
+                        emptyState
+                        RecentsSectionView(
+                            index: sessionIndex,
+                            liveSessionIDs: Set(store.sessions.map(\.id)),
+                            onGrantAccess: openAutomationSettings
+                        )
+                    }
                 } else {
                     ScrollView(.vertical) {
                         VStack(spacing: 6) {
@@ -57,6 +66,12 @@ struct NotchPanelView: View {
                                     onGrantAccess: openAutomationSettings
                                 )
                             }
+                            RecentsSectionView(
+                                index: sessionIndex,
+                                liveSessionIDs: Set(store.sessions.map(\.id)),
+                                onGrantAccess: openAutomationSettings
+                            )
+                            .padding(.top, 4)
                         }
                         .frame(maxWidth: .infinity)
                         .background {

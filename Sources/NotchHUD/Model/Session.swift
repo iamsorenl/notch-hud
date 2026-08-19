@@ -56,7 +56,11 @@ struct Session: Identifiable, Sendable {
     }
 
     func elapsed(at now: Date) -> String {
-        let seconds = max(0, now.timeIntervalSince(startedAt ?? updatedAt))
+        Self.compactDuration(now.timeIntervalSince(startedAt ?? updatedAt))
+    }
+
+    static func compactDuration(_ interval: TimeInterval) -> String {
+        let seconds = max(0, interval)
 
         if seconds < 60 {
             return "<1m"
