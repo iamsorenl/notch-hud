@@ -258,6 +258,9 @@ final class NotchWindowManager {
                 await notchedHUD.compact(on: screen)
                 guard self.transitionGeneration == generation, !self.isExpanded else { return }
                 self.configurePassThroughWindow(notchedHUD.windowController?.window)
+                // The compact animation restores window alpha; re-ghost after
+                // it finishes or the pill reappears despite ghost mode.
+                self.applyGhostState()
             }
             return
         }
@@ -268,6 +271,7 @@ final class NotchWindowManager {
             await floatingPeek.expand(on: screen)
             guard self.transitionGeneration == generation, !self.isExpanded else { return }
             self.configurePassThroughWindow(floatingPeek.windowController?.window)
+            self.applyGhostState()
         }
     }
 
