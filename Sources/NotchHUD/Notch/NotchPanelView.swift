@@ -10,6 +10,7 @@ struct NotchPanelView: View {
     let panelPrefs: NotchWindowManager.PanelPrefs
     let onTogglePin: @MainActor () -> Void
     let onToggleGhost: @MainActor () -> Void
+    let onToggleKeyboardOnly: @MainActor () -> Void
     let onApprovalDismiss: @MainActor (String) -> Void
     let onSizeChange: @MainActor (CGSize) -> Void
 
@@ -192,6 +193,13 @@ struct NotchPanelView: View {
                     isOn: Binding(
                         get: { panelPrefs.ghosted },
                         set: { _ in onToggleGhost() }
+                    )
+                )
+                Toggle(
+                    "Open only with ⌃⌥⌘N",
+                    isOn: Binding(
+                        get: { panelPrefs.keyboardOnly },
+                        set: { _ in onToggleKeyboardOnly() }
                     )
                 )
                 Button("Automation Settings…") { openAutomationSettings() }

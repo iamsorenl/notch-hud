@@ -17,6 +17,7 @@ final class NotchWindowManager {
     final class PanelPrefs {
         var pinned = false
         var ghosted = UserDefaults.standard.bool(forKey: NotchWindowManager.ghostDefaultsKey)
+        var keyboardOnly = UserDefaults.standard.bool(forKey: NotchWindowManager.keyboardOnlyDefaultsKey)
     }
 
     let panelPrefs = PanelPrefs()
@@ -39,6 +40,21 @@ final class NotchWindowManager {
         let alpha: CGFloat = (isGhosted && !isExpanded) ? 0 : 1
         notchedHUD?.windowController?.window?.alphaValue = alpha
         floatingPeek?.windowController?.window?.alphaValue = alpha
+    }
+
+    /// Keyboard-only: hover neither opens nor closes the panel; only the
+    /// hotkey, Escape, or a click outside does. Pending approvals still
+    /// auto-expand. Persisted across launches.
+    nonisolated static let keyboardOnlyDefaultsKey = "keyboardOnly"
+    var isKeyboardOnly: Bool { panelPrefs.keyboardOnly }
+
+    func setKeyboardOnly(_ keyboardOnly: Bool) {
+        panelPrefs.keyboardOnly = keyboardOnly
+        UserDefaults.standard.set(keyboardOnly, forKey: Self.keyboardOnlyDefaultsKey)
+    }
+
+    func togglePanel() {
+        isExpanded ? collapse(reason: .manual) : expand(reason: .manual)
     }
 
     func togglePanelPinned() {
@@ -340,6 +356,10 @@ final class NotchWindowManager {
                 guard let self else { return }
                 self.setGhosted(!self.isGhosted)
             },
+            onToggleKeyboardOnly: { [weak self] in
+                guard let self else { return }
+                self.setKeyboardOnly(!self.isKeyboardOnly)
+            },
             onApprovalDismiss: { [weak self] sessionID in
                 self?.approvalDidResolve(sessionID: sessionID)
             },
@@ -571,11 +591,12 @@ final class NotchWindowManager {
 
 extension NotchWindowManager: HoverControllerDelegate {
     func hoverControllerDidEnter(_ controller: HoverController) {
+        guard !panelPrefs.keyboardOnly else { return }
         expand(reason: .hover)
     }
 
     func hoverControllerDidExit(_ controller: HoverController) {
-        guard !panelPrefs.pinned else { return }
+        guard !panelPrefs.pinned, !panelPrefs.keyboardOnly else { return }
         collapse(reason: .hover)
     }
 

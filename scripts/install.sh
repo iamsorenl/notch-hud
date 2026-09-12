@@ -22,6 +22,18 @@ for f in notch-emit notch-claude-hook notch-approve notch-codex-notify; do
 done
 echo "installed notch-emit notch-claude-hook notch-approve notch-codex-notify to $notch_home/bin (notch-approve not registered; notch-codex-notify wired via ~/.codex/config.toml notify)"
 
+# Launcher: relaunch the HUD if it was quit (LSUIElement app, no Dock icon).
+app_path="/Applications/NotchHUD.app"
+[ -d "$app_path" ] || app_path="$(dirname "$script_dir")/build/NotchHUD.app"
+printf '#!/bin/sh\n# Restart so a wedged/invisible instance is replaced, not silently no-opped.\npkill -x NotchHUD 2>/dev/null && sleep 0.5\nexec open -g "%s"\n' "$app_path" > "$notch_home/bin/notch"
+chmod +x "$notch_home/bin/notch"
+zshrc="$HOME/.zshrc"
+if ! grep -q "notch-hud/bin/notch" "$zshrc" 2>/dev/null; then
+    printf '\nalias notch="$HOME/.notch-hud/bin/notch"\n' >> "$zshrc"
+    echo "added 'notch' alias to $zshrc"
+fi
+echo "launcher: run 'notch' to relaunch the HUD"
+
 hook_cmd="$notch_home/bin/notch-claude-hook"
 NOTCH_HOOK_CMD="$hook_cmd" SETTINGS="$settings" python3 - <<'PY'
 import json, os, shutil, sys, time
