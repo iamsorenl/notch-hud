@@ -1,4 +1,5 @@
 import AppKit
+import Carbon.HIToolbox
 import SwiftUI
 
 @main
@@ -26,6 +27,7 @@ private final class AppDelegate: NSObject, NSApplicationDelegate {
     private var usageProvider: UsageProvider?
     private var windowManager: NotchWindowManager?
     private var statusItem: NSStatusItem?
+    private var hotKey: GlobalHotKey?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory)
@@ -72,6 +74,14 @@ private final class AppDelegate: NSObject, NSApplicationDelegate {
         usageProvider.start()
         windowManager.boot()
         installStatusItem()
+        // ⌃⌥⌘N toggles the panel. Plain ⌘N is "New" in every app and a global
+        // hotkey would steal it system-wide, so the chord adds ⌃⌥.
+        hotKey = GlobalHotKey(
+            keyCode: UInt32(kVK_ANSI_N),
+            modifiers: UInt32(controlKey | optionKey | cmdKey)
+        ) { [weak windowManager] in
+            windowManager?.togglePanel()
+        }
 
         NotificationCenter.default.addObserver(
             self,
@@ -96,6 +106,13 @@ private final class AppDelegate: NSObject, NSApplicationDelegate {
         let ghosted = !(windowManager?.isGhosted ?? false)
         windowManager?.setGhosted(ghosted)
         sender.state = ghosted ? .on : .off
+    }
+
+    @objc
+    private func toggleKeyboardOnly(_ sender: NSMenuItem) {
+        let keyboardOnly = !(windowManager?.isKeyboardOnly ?? false)
+        windowManager?.setKeyboardOnly(keyboardOnly)
+        sender.state = keyboardOnly ? .on : .off
     }
 
     @objc
@@ -125,6 +142,15 @@ private final class AppDelegate: NSObject, NSApplicationDelegate {
         ghostItem.state = (windowManager?.isGhosted ?? false) ? .on : .off
         menu.addItem(ghostItem)
 
+        let keyboardOnlyItem = NSMenuItem(
+            title: "Open only with ⌃⌥⌘N",
+            action: #selector(toggleKeyboardOnly(_:)),
+            keyEquivalent: ""
+        )
+        keyboardOnlyItem.target = self
+        keyboardOnlyItem.state = (windowManager?.isKeyboardOnly ?? false) ? .on : .off
+        menu.addItem(keyboardOnlyItem)
+
         let pauseItem = NSMenuItem(
             title: "Pause approvals",
             action: #selector(togglePauseApprovals(_:)),
@@ -134,13 +160,14 @@ private final class AppDelegate: NSObject, NSApplicationDelegate {
         pauseItem.state = approvalsAreEnabled ? .off : .on
         menu.addItem(pauseItem)
 
-        let collapseItem = NSMenuItem(
-            title: "Collapse panel",
-            action: #selector(collapsePanel(_:)),
-            keyEquivalent: ""
+        let toggleItem = NSMenuItem(
+            title: "Toggle panel",
+            action: #selector(togglePanel(_:)),
+            keyEquivalent: "n"
         )
-        collapseItem.target = self
-        menu.addItem(collapseItem)
+        toggleItem.keyEquivalentModifierMask = [.control, .option, .command]
+        toggleItem.target = self
+        menu.addItem(toggleItem)
         menu.addItem(.separator())
 
         let quitItem = NSMenuItem(
@@ -166,8 +193,8 @@ private final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     @objc
-    private func collapsePanel(_ sender: NSMenuItem) {
-        windowManager?.collapse(reason: .manual)
+    private func togglePanel(_ sender: NSMenuItem) {
+        windowManager?.togglePanel()
     }
 
     @objc
